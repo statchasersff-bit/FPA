@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "StatChasers"
+version = "1.0.0"
+id = "artifacts/statchasers"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22515
+
+[services.development]
+run = "pnpm --filter @workspace/statchasers run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/statchasers", "run", "build" ]
+publicDir = "artifacts/statchasers/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22515"
+BASE_PATH = "/"

@@ -1,10 +1,11 @@
-# [Project name]
+# StatChasers
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps managers find exploitable defensive weaknesses by position.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/statchasers run dev` — run the frontend (dev server)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -14,6 +15,7 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite + Tailwind CSS + shadcn/ui + wouter
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -22,15 +24,22 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — API contract source of truth
+- `lib/db/src/schema/fantasyPointsAllowed.ts` — FPA DB schema (games + snapshots tables)
+- `artifacts/api-server/src/routes/nfl/fpa.ts` — FPA route handlers + seed data + data mode logic
+- `artifacts/statchasers/src/` — React frontend
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- FPA snapshots are seeded on first request (lazy seed pattern) — no separate migration/seed script needed.
+- Three scoring formats (standard/half/ppr) are stored as separate snapshot rows; format adjustment is applied from half-PPR base values during seeding.
+- Data mode weighting (preseason vs regular season) is determined server-side based on `weekNumber`; currently returns preseason baseline (70% 2025 full season + 30% final 8 weeks).
+- Adjusted FPA uses per-team schedule bias offsets baked into seed data; in production these would be computed from actual schedule matchup data.
+- CSV download is served directly from the API as `text/csv` — no client-side generation needed.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- `/nfl/fantasy-points-allowed` — sortable FPA table for all 32 NFL defenses, with Standard/Half-PPR/PPR and Raw/Adjusted toggles, CSV export, rank badges, and methodology note.
 
 ## User preferences
 
@@ -38,7 +47,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- DB seed runs lazily on first API request — first cold-start request takes ~80ms extra.
+- After OpenAPI spec changes always run `pnpm --filter @workspace/api-spec run codegen` before touching route or frontend code.
+- Drizzle `numeric` columns return strings from the DB — always `parseFloat()` before arithmetic.
 
 ## Pointers
 

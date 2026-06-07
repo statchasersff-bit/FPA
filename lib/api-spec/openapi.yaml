@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: nfl
+    description: NFL data operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /nfl/fantasy-points-allowed:
+    get:
+      operationId: getNflFpa
+      tags: [nfl]
+      summary: Get NFL Fantasy Points Allowed by position
+      description: Returns sortable FPA data for all 32 NFL defenses by position
+      parameters:
+        - name: season
+          in: query
+          schema:
+            type: integer
+            default: 2026
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [standard, half, ppr]
+            default: half
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [raw, adjusted]
+            default: adjusted
+      responses:
+        "200":
+          description: FPA data for all teams
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FpaResponse"
+  /nfl/fantasy-points-allowed/download:
+    get:
+      operationId: downloadNflFpa
+      tags: [nfl]
+      summary: Download FPA data as CSV
+      parameters:
+        - name: season
+          in: query
+          schema:
+            type: integer
+            default: 2026
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [standard, half, ppr]
+            default: half
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [raw, adjusted]
+            default: adjusted
+      responses:
+        "200":
+          description: CSV download
+          content:
+            text/csv:
+              schema:
+                type: string
 components:
   schemas:
     HealthStatus:
@@ -33,4 +96,72 @@ components:
           type: string
       required:
         - status
-
+    FpaTeamRow:
+      type: object
+      required:
+        - team
+        - teamAbbr
+        - qbRank
+        - qbFpa
+        - rbRank
+        - rbFpa
+        - wrRank
+        - wrFpa
+        - teRank
+        - teFpa
+        - offFpa
+        - gamesPlayed
+      properties:
+        team:
+          type: string
+        teamAbbr:
+          type: string
+        qbRank:
+          type: integer
+        qbFpa:
+          type: number
+        rbRank:
+          type: integer
+        rbFpa:
+          type: number
+        wrRank:
+          type: integer
+        wrFpa:
+          type: number
+        teRank:
+          type: integer
+        teFpa:
+          type: number
+        offFpa:
+          type: number
+        gamesPlayed:
+          type: integer
+    FpaResponse:
+      type: object
+      required:
+        - rows
+        - dataMode
+        - methodology
+        - season
+        - format
+        - view
+        - isPreseason
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/FpaTeamRow"
+        dataMode:
+          type: string
+        methodology:
+          type: string
+        season:
+          type: integer
+        format:
+          type: string
+        view:
+          type: string
+        weekNumber:
+          type: ["integer", "null"]
+        isPreseason:
+          type: boolean

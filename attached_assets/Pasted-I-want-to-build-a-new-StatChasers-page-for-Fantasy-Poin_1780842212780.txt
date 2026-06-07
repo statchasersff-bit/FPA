@@ -1,0 +1,57 @@
+I want to build a new StatChasers page for Fantasy Points Allowed by Position.
+
+Create a new page at /nfl/fantasy-points-allowed/ that displays a sortable table of NFL defenses and the average fantasy points they allow by position.
+
+The page should support:
+- Standard, Half-PPR, and PPR scoring toggles
+- Raw FPA and Adjusted FPA toggle
+- Columns for Team, QB Rank, QB FPA, RB Rank, RB FPA, WR Rank, WR FPA, TE Rank, TE FPA, and OFF FPA
+- CSV download
+- Mobile-friendly table layout
+- StatChasers styling consistent with the NFL depth charts page
+
+Important:
+We are currently in the 2026 preseason, so current-season data should not be treated as reliable yet.
+
+Implement this data mode logic:
+- Preseason / before Week 1: use 70% 2025 full season data and 30% 2025 final 8 weeks
+- After Week 1: 75% preseason baseline and 25% 2026 data
+- After Week 2: 60% preseason baseline and 40% 2026 data
+- After Week 3: 40% preseason baseline and 60% 2026 data
+- After Week 4: 20% preseason baseline and 80% 2026 data
+- Week 5+: mostly current-season 2026 data
+- Week 12+: rolling 10-week data
+
+Add a visible methodology note above or below the table explaining the current data mode.
+
+Fantasy scoring:
+- Passing yards: 0.04
+- Passing TD: 4
+- Interception: -2
+- Rushing yards: 0.1
+- Rushing TD: 6
+- Receiving yards: 0.1
+- Receiving TD: 6
+- Reception: 0 for Standard, 0.5 for Half-PPR, 1 for PPR
+- Fumble lost: -2
+
+For each defense and position:
+Raw FPA = average fantasy points scored by that position against that defense.
+
+Adjusted FPA should remove schedule bias:
+Expected Points Allowed = average fantasy production of the offenses faced by that defense at that position.
+Adjusted FPA = League Average Positional FPA + (Actual FPA - Expected FPA).
+
+Rank logic:
+Rank 1 = toughest matchup / fewest adjusted points allowed.
+Rank 32 = easiest matchup / most adjusted points allowed.
+
+Create backend API endpoints:
+GET /api/nfl/fantasy-points-allowed?season=2026&format=half&view=adjusted
+GET /api/nfl/fantasy-points-allowed/download?season=2026&format=half&view=adjusted
+
+Create or update database tables for:
+fantasy_points_allowed_games
+fantasy_points_allowed_snapshots
+
+If live data is not ready yet, seed the table with calculated 2025 baseline data and clearly label the frontend as “Preseason Baseline.”
