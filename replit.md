@@ -13,6 +13,7 @@ Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps
 - `pnpm --filter @workspace/api-server run ingest-fpa` — ingest FPA from nflverse into Postgres (append `-- --baseline 2025 --current 2026` to override seasons)
 - Required env: `DATABASE_URL` — Postgres connection string
 - Optional env: `FPA_BASELINE_SEASON` (default 2025), `FPA_CURRENT_SEASON` (default 2026)
+- Optional env: `FPA_ADMIN_SECRET` — shared secret guarding `POST /api/admin/fpa/refresh`; must match the WordPress plugin's "Replit Admin Secret" setting. Refresh is disabled (503) until set.
 
 ## Stack
 
@@ -32,7 +33,9 @@ Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps
 - `artifacts/api-server/src/lib/fpa-ingest.ts` — FPA aggregation, baseline blend, Postgres writes
 - `artifacts/api-server/src/scripts/ingest-fpa.ts` — ingest CLI
 - `artifacts/api-server/src/routes/nfl/fpa.ts` — FPA route handlers + data mode logic
+- `artifacts/api-server/src/routes/admin/fpa.ts` — admin-secret-guarded `POST /api/admin/fpa/refresh` that triggers `ingestFpa()`
 - `artifacts/statchasers/src/` — React frontend
+- `artifacts/wordpress-plugin/statchasers-data-tools/` — "StatChasers Data Tools" WP plugin: admin refresh button, cached public REST endpoint (`/wp-json/statchasers/v1/fpa`), and `[statchasers_fpa]` frontend shortcode. WordPress is the control panel/cache/display; Replit stays the data engine.
 
 ## Architecture decisions
 

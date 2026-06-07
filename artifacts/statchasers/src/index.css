@@ -159,3 +159,82 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* ─── FPA controls: mobile stacked layout (≤640px) ─────────────────────────── */
+/* Un-layered so these override Tailwind utility classes on small screens.      */
+@media (max-width: 640px) {
+  .sc-fpa-controls {
+    padding: 14px 12px;
+  }
+
+  .sc-fpa-control-group {
+    display: block;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .sc-fpa-control-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #52627a;
+  }
+
+  .sc-fpa-segmented {
+    display: grid;
+    width: 100%;
+    gap: 0;
+    padding: 4px;
+    border-radius: 12px;
+    background: #f5f6f8;
+    border: 1px solid #edf0f4;
+  }
+
+  .sc-fpa-segmented--three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .sc-fpa-segmented--two {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sc-fpa-segmented button {
+    width: 100%;
+    min-height: 38px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #52627a;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .sc-fpa-segmented button.is-active {
+    background: #f8bd18;
+    color: #111827;
+    box-shadow: 0 2px 6px rgba(248, 189, 24, 0.28);
+  }
+
+  /* CSV button drops below the filters and spans the full width. */
+  .sc-fpa-csv-wrap {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .sc-fpa-download-btn {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 2px;
+    border-radius: 10px;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 900;
+  }
+}

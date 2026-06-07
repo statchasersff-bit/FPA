@@ -9,9 +9,7 @@
  *               / (games that defense played)
  *
  * Because the 2026 season has not started, the served numbers are a preseason
- * baseline built from 2025:
- *
- *     baseline = 0.70 * (full 2025 season FPA) + 0.30 * (final 8 weeks 2025 FPA)
+ * baseline equal to the full 2025 season FPA (100% full-season weight).
  *
  * Once 2026 regular-season games exist, the baseline is blended with live 2026
  * FPA, with the weight on live data increasing as more weeks are played.
@@ -48,10 +46,10 @@ export const DEFAULT_CURRENT_SEASON = Number(
   process.env.FPA_CURRENT_SEASON ?? 2026,
 );
 
-const BASELINE_FULL_WEIGHT = 0.7;
-const BASELINE_RECENT_WEIGHT = 0.3;
-const RECENT_WINDOW_WEEKS = 8;
 const ROLLING_WINDOW_WEEKS = 10;
+// The preseason baseline mirrors industry "Weeks 1–17" tables (e.g.
+// FantasyPros) — Week 18 rests/blowouts are excluded.
+const BASELINE_MAX_WEEK = 17;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -206,21 +204,13 @@ interface BlendedDefense {
   byPos: Record<FantasyPosition, PositionFpa>;
 }
 
-function buildPreseasonBaseline(
-  full: FpaTable,
-  recent: FpaTable,
-): Map<string, BlendedDefense> {
+// Preseason baseline = 100% full-season FPA.
+function buildPreseasonBaseline(full: FpaTable): Map<string, BlendedDefense> {
   const out = new Map<string, BlendedDefense>();
   for (const [abbr, fullDef] of full) {
-    const recentDef = recent.get(abbr);
     const byPos = emptyPosRecord<PositionFpa>(() => ({ raw: 0, adj: 0 }));
     for (const p of FANTASY_POSITIONS) {
-      const f = fullDef.byPos[p];
-      const r = recentDef?.byPos[p] ?? f; // fall back to full if no recent data
-      byPos[p] = {
-        raw: BASELINE_FULL_WEIGHT * f.raw + BASELINE_RECENT_WEIGHT * r.raw,
-        adj: BASELINE_FULL_WEIGHT * f.adj + BASELINE_RECENT_WEIGHT * r.adj,
-      };
+      byPos[p] = { ...fullDef.byPos[p] };
     }
     out.set(abbr, { abbr, games: fullDef.games, byPos });
   }
@@ -358,7 +348,9 @@ export async function ingestFpa(opts: IngestOptions = {}): Promise<IngestResult>
 
   logger.info({ baselineSeason, currentSeason }, "FPA ingest started");
 
-  const baselineRows = await fetchScoredWeeklyStats(baselineSeason);
+  const baselineRows = (await fetchScoredWeeklyStats(baselineSeason)).filter(
+    (r) => r.week >= 1 && r.week <= BASELINE_MAX_WEEK,
+  );
   if (baselineRows.length === 0) {
     throw new Error(
       `No baseline rows scored for ${baselineSeason}; aborting ingest`,
@@ -380,12 +372,6 @@ export async function ingestFpa(opts: IngestOptions = {}): Promise<IngestResult>
     }
   }
 
-  // ── Baseline tables (full season + final N weeks) ──
-  const recentWeeks = new Set(
-    distinctWeeksDesc(baselineRows).slice(0, RECENT_WINDOW_WEEKS),
-  );
-  const recentRows = rowsForWeeks(baselineRows, recentWeeks);
-
   const currentWeeksPlayed = currentRows.length
     ? new Set(currentRows.map((r) => r.week)).size
     : 0;
@@ -398,8 +384,7 @@ export async function ingestFpa(opts: IngestOptions = {}): Promise<IngestResult>
 
   for (const format of SCORING_FORMATS) {
     const full = computeFpaTable(baselineRows, format);
-    const recent = computeFpaTable(recentRows, format);
-    let blended = buildPreseasonBaseline(full, recent);
+    let blended = buildPreseasonBaseline(full);
 
     if (!isPreseason) {
       // Week 12+ uses a rolling current-season window only.

@@ -1,0 +1,328 @@
+/* StatChasers — Fantasy Points Allowed frontend table.
+   Self-contained, theme-agnostic, mobile-first. */
+
+.sdt-fpa {
+  --sdt-gold: #f4c430;
+  --sdt-navy: #0b1f3a;
+  --sdt-blue: #20365a;
+  --sdt-border: #e6e9ee;
+  --sdt-muted: #52627a;
+  --sdt-card: #ffffff;
+  --sdt-row-hover: #f7f9fc;
+
+  color: var(--sdt-navy);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+.sdt-fpa__loading,
+.sdt-fpa__empty,
+.sdt-fpa__error {
+  padding: 24px;
+  text-align: center;
+  color: var(--sdt-muted);
+  border: 1px solid var(--sdt-border);
+  border-radius: 12px;
+  background: var(--sdt-card);
+}
+
+.sdt-fpa__error {
+  color: #b42318;
+  border-color: #f3c0bb;
+  background: #fef3f2;
+}
+
+/* ── Control panel ─────────────────────────────────────────────────────────── */
+
+.sdt-fpa__panel {
+  border: 1px solid var(--sdt-border);
+  border-radius: 14px;
+  background: var(--sdt-card);
+  box-shadow: 0 4px 14px -8px rgba(11, 31, 58, 0.18);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.sdt-fpa__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.sdt-fpa__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sdt-fpa__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sdt-muted);
+}
+
+.sdt-fpa__segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f3f5f8;
+  border: 1px solid #edf0f4;
+}
+
+.sdt-fpa__chip {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sdt-muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sdt-fpa__chip:hover {
+  color: var(--sdt-navy);
+}
+
+.sdt-fpa__chip.is-active {
+  background: var(--sdt-gold);
+  color: #111827;
+  box-shadow: 0 2px 6px rgba(248, 189, 24, 0.28);
+}
+
+.sdt-fpa__csv-wrap {
+  margin-left: auto;
+}
+
+.sdt-fpa__csv {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  background: var(--sdt-gold);
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+}
+
+.sdt-fpa__csv:hover {
+  filter: brightness(0.97);
+}
+
+/* ── Notice (StatChasers blue) ─────────────────────────────────────────────── */
+
+.sdt-fpa__notice {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sdt-border);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sdt-fpa__notice-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sdt-blue);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.sdt-fpa__notice-strong {
+  font-weight: 800;
+  color: var(--sdt-blue);
+}
+
+.sdt-fpa__notice-text {
+  color: var(--sdt-muted);
+}
+
+/* ── Table ─────────────────────────────────────────────────────────────────── */
+
+.sdt-fpa__table-wrap {
+  border: 1px solid var(--sdt-border);
+  border-radius: 14px;
+  background: var(--sdt-card);
+  overflow: hidden;
+  box-shadow: 0 6px 18px -10px rgba(11, 31, 58, 0.25);
+}
+
+.sdt-fpa__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.sdt-fpa__th {
+  background: linear-gradient(90deg, #0b1f3a, #132a4a);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sdt-fpa__th--team {
+  text-align: left;
+}
+
+.sdt-fpa__th.is-off,
+.sdt-fpa__td.is-off {
+  background-color: rgba(244, 196, 48, 0.1);
+}
+
+.sdt-fpa__row {
+  border-top: 1px solid #eef1f5;
+  transition: background 0.12s ease;
+}
+
+.sdt-fpa__row:hover {
+  background: var(--sdt-row-hover);
+}
+
+.sdt-fpa__td {
+  padding: 10px 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.sdt-fpa__td--team {
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sdt-fpa__td.is-off {
+  font-weight: 800;
+}
+
+.sdt-fpa__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.sdt-fpa__logo img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.sdt-fpa__logo--fallback {
+  border-radius: 999px;
+  background: #eef1f5;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--sdt-muted);
+}
+
+.sdt-fpa__team-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.sdt-fpa__abbr {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.sdt-fpa__full {
+  font-size: 11px;
+  color: var(--sdt-muted);
+}
+
+/* ── Heatmap tints ─────────────────────────────────────────────────────────── */
+
+.sdt-heat--tough {
+  background-color: hsla(6, 72%, 52%, 0.07);
+}
+.sdt-heat--good {
+  background-color: hsla(43, 96%, 56%, 0.09);
+}
+.sdt-heat--smash {
+  background-color: hsla(151, 60%, 45%, 0.1);
+}
+
+/* ── Loading state ─────────────────────────────────────────────────────────── */
+
+.sdt-fpa.is-loading .sdt-fpa__table-wrap {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ── Mobile (≤640px) ───────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .sdt-fpa__controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .sdt-fpa__group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .sdt-fpa__segmented {
+    display: grid;
+    width: 100%;
+    gap: 2px;
+  }
+
+  .sdt-fpa__segmented--three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .sdt-fpa__segmented--two {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sdt-fpa__chip {
+    min-height: 40px;
+    text-align: center;
+  }
+
+  /* Hide the CSV button on small screens. */
+  .sdt-fpa__csv-wrap {
+    display: none;
+  }
+
+  /* Hide team logos to save horizontal space. */
+  .sdt-fpa__logo {
+    display: none;
+  }
+
+  /* Hide full team name; keep the abbreviation only. */
+  .sdt-fpa__full {
+    display: none;
+  }
+
+  .sdt-fpa__th,
+  .sdt-fpa__td {
+    padding: 8px 8px;
+    font-size: 13px;
+  }
+}
