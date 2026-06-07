@@ -70,72 +70,72 @@
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'JetBrains Mono', monospace;
-  --radius: 0.25rem;
+  --radius: 0.5rem;
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+  --button-outline: rgba(11,31,58, .14);
+  --badge-outline: rgba(11,31,58, .08);
 
-  --opaque-button-border-intensity: 9;
+  --opaque-button-border-intensity: -9;
 
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(11,31,58, .04);
+  --elevate-2: rgba(11,31,58, .08);
 
-  /* Dark mode first */
-  --background: 222 24% 6%;
-  --foreground: 210 20% 90%;
-  --border: 220 18% 15%;
-  
-  --card: 222 20% 9%;
-  --card-foreground: 210 20% 90%;
-  --card-border: 220 18% 15%;
-  
-  --sidebar: 222 24% 6%;
-  --sidebar-foreground: 210 20% 90%;
-  --sidebar-border: 220 18% 15%;
-  --sidebar-primary: 151 100% 50%;
-  --sidebar-primary-foreground: 222 24% 6%;
-  --sidebar-accent: 220 18% 15%;
-  --sidebar-accent-foreground: 210 20% 90%;
-  --sidebar-ring: 151 100% 50%;
-  
-  --popover: 222 24% 6%;
-  --popover-foreground: 210 20% 90%;
-  --popover-border: 220 18% 15%;
-  
-  --primary: 151 100% 50%;
-  --primary-foreground: 222 24% 6%;
-  
-  --secondary: 220 18% 15%;
-  --secondary-foreground: 210 20% 90%;
-  
-  --muted: 220 18% 12%;
-  --muted-foreground: 215 15% 65%;
-  
-  --accent: 220 18% 15%;
-  --accent-foreground: 210 20% 90%;
-  
-  --destructive: 0 84% 60%;
+  /* StatChasers light brand theme */
+  --background: 0 0% 100%;             /* white */
+  --foreground: 220 47% 11%;           /* navy #0B1F3A */
+  --border: 220 13% 91%;               /* light divider */
+
+  --card: 0 0% 100%;                   /* white cards */
+  --card-foreground: 220 47% 11%;
+  --card-border: 220 13% 91%;
+
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 220 47% 11%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-primary: 43 96% 56%;
+  --sidebar-primary-foreground: 220 47% 11%;
+  --sidebar-accent: 220 14% 96%;
+  --sidebar-accent-foreground: 220 47% 11%;
+  --sidebar-ring: 43 96% 56%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 47% 11%;
+  --popover-border: 220 13% 91%;
+
+  --primary: 43 96% 56%;               /* gold #F4C430 */
+  --primary-foreground: 220 47% 11%;   /* navy on gold */
+
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 220 47% 11%;
+
+  --muted: 220 14% 97%;
+  --muted-foreground: 215 25% 40%;     /* slate gray */
+
+  --accent: 220 14% 96%;
+  --accent-foreground: 220 47% 11%;
+
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  
-  --input: 220 18% 15%;
-  --ring: 151 100% 50%;
 
-  --chart-1: 151 100% 50%;
-  --chart-2: 210 100% 60%;
-  --chart-3: 35 100% 55%;
-  --chart-4: 280 100% 65%;
-  --chart-5: 0 84% 60%;
+  --input: 220 13% 88%;
+  --ring: 43 96% 56%;                  /* gold focus ring */
 
-  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.5);
-  --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.5);
-  --shadow-sm: 0px 2px 0px 0px rgba(0,0,0,0.5), 0px 1px 2px -1px rgba(0,0,0,0.5);
-  --shadow: 0px 2px 0px 0px rgba(0,0,0,0.5), 0px 1px 2px -1px rgba(0,0,0,0.5);
-  --shadow-md: 0px 2px 0px 0px rgba(0,0,0,0.5), 0px 2px 4px -1px rgba(0,0,0,0.5);
-  --shadow-lg: 0px 2px 0px 0px rgba(0,0,0,0.5), 0px 4px 6px -1px rgba(0,0,0,0.5);
-  --shadow-xl: 0px 2px 0px 0px rgba(0,0,0,0.5), 0px 8px 10px -1px rgba(0,0,0,0.5);
-  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,0.5);
+  --chart-1: 43 96% 56%;
+  --chart-2: 220 47% 24%;
+  --chart-3: 35 92% 50%;
+  --chart-4: 151 55% 42%;
+  --chart-5: 0 72% 51%;
+
+  --shadow-2xs: 0px 1px 1px 0px rgba(11,31,58,0.04);
+  --shadow-xs: 0px 1px 2px 0px rgba(11,31,58,0.05);
+  --shadow-sm: 0px 1px 2px 0px rgba(11,31,58,0.06), 0px 1px 3px -1px rgba(11,31,58,0.06);
+  --shadow: 0px 1px 3px 0px rgba(11,31,58,0.08), 0px 1px 2px -1px rgba(11,31,58,0.06);
+  --shadow-md: 0px 2px 4px -1px rgba(11,31,58,0.08), 0px 4px 6px -1px rgba(11,31,58,0.08);
+  --shadow-lg: 0px 4px 6px -2px rgba(11,31,58,0.08), 0px 10px 15px -3px rgba(11,31,58,0.10);
+  --shadow-xl: 0px 10px 20px -5px rgba(11,31,58,0.12), 0px 20px 25px -5px rgba(11,31,58,0.10);
+  --shadow-2xl: 0px 25px 50px -12px rgba(11,31,58,0.20);
 
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);

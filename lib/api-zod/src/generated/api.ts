@@ -23,7 +23,7 @@ export const HealthCheckResponse = zod.object({
  */
 export const getNflFpaQuerySeasonDefault = 2026;
 export const getNflFpaQueryFormatDefault = `half`;
-export const getNflFpaQueryViewDefault = `adjusted`;
+export const getNflFpaQueryViewDefault = `raw`;
 
 export const GetNflFpaQueryParams = zod.object({
   "season": zod.coerce.number().default(getNflFpaQuerySeasonDefault),
@@ -61,7 +61,7 @@ export const GetNflFpaResponse = zod.object({
  */
 export const downloadNflFpaQuerySeasonDefault = 2026;
 export const downloadNflFpaQueryFormatDefault = `half`;
-export const downloadNflFpaQueryViewDefault = `adjusted`;
+export const downloadNflFpaQueryViewDefault = `raw`;
 
 export const DownloadNflFpaQueryParams = zod.object({
   "season": zod.coerce.number().default(downloadNflFpaQuerySeasonDefault),

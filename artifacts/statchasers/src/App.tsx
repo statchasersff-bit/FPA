@@ -19,9 +19,9 @@ function Router() {
 }
 
 function App() {
-  // Force dark mode
+  // StatChasers brand is a light theme (white background, navy text, gold accent).
   useEffect(() => {
-    document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("dark");
   }, []);
 
   return (

@@ -10,7 +10,10 @@ import { logger } from "../../lib/logger";
 
 const router: IRouter = Router();
 
-// ─── NFL team data ─────────────────────────────────────────────────────────────
+// In-memory flag — avoids a DB round-trip on every request after first seed.
+let seeded = false;
+
+// ─── NFL team seed data ────────────────────────────────────────────────────────
 
 interface TeamSeed {
   abbr: string;
@@ -28,46 +31,43 @@ interface TeamSeed {
 }
 
 const TEAMS: TeamSeed[] = [
-  // Toughest defenses (low FPA)
-  { abbr: "BAL", name: "Baltimore Ravens",     qbRaw: 13.8, rbRaw: 16.2, wrRaw: 22.5, teRaw: 5.8,  qbBias: 0.4,  rbBias: 0.6,  wrBias: 0.8,  teBias: 0.2  },
-  { abbr: "KC",  name: "Kansas City Chiefs",   qbRaw: 14.5, rbRaw: 17.4, wrRaw: 24.2, teRaw: 5.2,  qbBias: -0.3, rbBias: -0.5, wrBias: -0.6, teBias: -0.2 },
-  { abbr: "BUF", name: "Buffalo Bills",        qbRaw: 15.1, rbRaw: 16.8, wrRaw: 25.1, teRaw: 6.1,  qbBias: 0.2,  rbBias: 0.3,  wrBias: 0.5,  teBias: 0.1  },
-  { abbr: "PIT", name: "Pittsburgh Steelers",  qbRaw: 14.8, rbRaw: 18.2, wrRaw: 26.3, teRaw: 6.4,  qbBias: -0.1, rbBias: 0.2,  wrBias: 0.3,  teBias: -0.1 },
-  { abbr: "MIN", name: "Minnesota Vikings",    qbRaw: 15.5, rbRaw: 18.8, wrRaw: 25.8, teRaw: 7.2,  qbBias: 0.5,  rbBias: 0.7,  wrBias: 0.9,  teBias: 0.3  },
-  { abbr: "SF",  name: "San Francisco 49ers",  qbRaw: 15.2, rbRaw: 15.2, wrRaw: 27.4, teRaw: 7.5,  qbBias: -0.4, rbBias: -0.8, wrBias: -1.0, teBias: -0.3 },
-  { abbr: "MIA", name: "Miami Dolphins",       qbRaw: 15.8, rbRaw: 19.5, wrRaw: 26.5, teRaw: 6.8,  qbBias: 0.3,  rbBias: 0.4,  wrBias: 0.6,  teBias: 0.2  },
-  { abbr: "DEN", name: "Denver Broncos",       qbRaw: 16.2, rbRaw: 17.8, wrRaw: 28.1, teRaw: 7.9,  qbBias: -0.2, rbBias: 0.1,  wrBias: 0.2,  teBias: -0.1 },
-  { abbr: "PHI", name: "Philadelphia Eagles",  qbRaw: 16.5, rbRaw: 19.2, wrRaw: 27.8, teRaw: 8.1,  qbBias: 0.1,  rbBias: -0.3, wrBias: -0.4, teBias: 0.1  },
-  { abbr: "DAL", name: "Dallas Cowboys",       qbRaw: 16.8, rbRaw: 20.1, wrRaw: 28.5, teRaw: 7.6,  qbBias: 0.4,  rbBias: 0.5,  wrBias: 0.7,  teBias: 0.2  },
-  // Middle of pack
-  { abbr: "GB",  name: "Green Bay Packers",    qbRaw: 17.4, rbRaw: 21.2, wrRaw: 30.2, teRaw: 13.2, qbBias: -0.3, rbBias: -0.2, wrBias: -0.3, teBias: 0.4  },
-  { abbr: "TB",  name: "Tampa Bay Buccaneers", qbRaw: 17.8, rbRaw: 21.8, wrRaw: 31.5, teRaw: 9.2,  qbBias: 0.2,  rbBias: 0.3,  wrBias: 0.4,  teBias: -0.2 },
-  { abbr: "NE",  name: "New England Patriots", qbRaw: 17.2, rbRaw: 20.5, wrRaw: 30.8, teRaw: 8.8,  qbBias: -0.5, rbBias: -0.6, wrBias: -0.8, teBias: -0.3 },
-  { abbr: "LAR", name: "Los Angeles Rams",     qbRaw: 18.2, rbRaw: 29.5, wrRaw: 32.1, teRaw: 9.5,  qbBias: 0.1,  rbBias: 0.2,  wrBias: 0.3,  teBias: 0.1  },
-  { abbr: "SEA", name: "Seattle Seahawks",     qbRaw: 18.5, rbRaw: 22.4, wrRaw: 32.8, teRaw: 10.1, qbBias: 0.3,  rbBias: -0.1, wrBias: -0.2, teBias: 0.2  },
-  { abbr: "DET", name: "Detroit Lions",        qbRaw: 18.8, rbRaw: 22.8, wrRaw: 33.2, teRaw: 9.8,  qbBias: -0.2, rbBias: 0.4,  wrBias: 0.5,  teBias: -0.1 },
-  { abbr: "ATL", name: "Atlanta Falcons",      qbRaw: 19.2, rbRaw: 23.5, wrRaw: 33.8, teRaw: 10.4, qbBias: 0.4,  rbBias: -0.3, wrBias: -0.4, teBias: 0.3  },
-  { abbr: "LV",  name: "Las Vegas Raiders",    qbRaw: 19.5, rbRaw: 23.2, wrRaw: 34.5, teRaw: 9.6,  qbBias: -0.1, rbBias: 0.2,  wrBias: 0.3,  teBias: -0.2 },
-  { abbr: "CIN", name: "Cincinnati Bengals",   qbRaw: 19.8, rbRaw: 24.1, wrRaw: 34.2, teRaw: 10.8, qbBias: 0.2,  rbBias: -0.4, wrBias: -0.5, teBias: 0.1  },
-  { abbr: "JAX", name: "Jacksonville Jaguars", qbRaw: 20.1, rbRaw: 24.5, wrRaw: 35.1, teRaw: 9.2,  qbBias: -0.3, rbBias: 0.3,  wrBias: 0.4,  teBias: -0.3 },
-  { abbr: "NYJ", name: "New York Jets",        qbRaw: 20.5, rbRaw: 24.8, wrRaw: 35.8, teRaw: 10.2, qbBias: 0.5,  rbBias: -0.2, wrBias: -0.3, teBias: 0.2  },
-  { abbr: "LAC", name: "Los Angeles Chargers", qbRaw: 20.8, rbRaw: 25.2, wrRaw: 36.2, teRaw: 11.2, qbBias: -0.4, rbBias: 0.5,  wrBias: 0.6,  teBias: -0.1 },
-  { abbr: "HOU", name: "Houston Texans",       qbRaw: 21.2, rbRaw: 25.8, wrRaw: 36.8, teRaw: 10.5, qbBias: 0.1,  rbBias: -0.3, wrBias: -0.4, teBias: 0.3  },
-  { abbr: "WAS", name: "Washington Commanders",qbRaw: 21.5, rbRaw: 26.2, wrRaw: 37.5, teRaw: 11.5, qbBias: -0.2, rbBias: 0.4,  wrBias: 0.5,  teBias: -0.2 },
-  { abbr: "CLE", name: "Cleveland Browns",     qbRaw: 21.8, rbRaw: 26.5, wrRaw: 38.2, teRaw: 10.8, qbBias: 0.3,  rbBias: -0.5, wrBias: -0.6, teBias: 0.1  },
-  { abbr: "NYG", name: "New York Giants",      qbRaw: 22.2, rbRaw: 27.1, wrRaw: 42.1, teRaw: 11.8, qbBias: -0.5, rbBias: 0.3,  wrBias: 0.4,  teBias: -0.3 },
-  { abbr: "NO",  name: "New Orleans Saints",   qbRaw: 22.5, rbRaw: 28.8, wrRaw: 38.8, teRaw: 14.2, qbBias: 0.4,  rbBias: -0.4, wrBias: -0.5, teBias: 0.2  },
-  // Easiest defenses (high FPA)
-  { abbr: "IND", name: "Indianapolis Colts",   qbRaw: 24.8, rbRaw: 30.8, wrRaw: 43.5, teRaw: 12.2, qbBias: -0.3, rbBias: 0.6,  wrBias: 0.8,  teBias: -0.4 },
-  { abbr: "TEN", name: "Tennessee Titans",     qbRaw: 23.5, rbRaw: 29.2, wrRaw: 42.8, teRaw: 11.8, qbBias: 0.2,  rbBias: -0.7, wrBias: -0.9, teBias: 0.3  },
-  { abbr: "ARI", name: "Arizona Cardinals",    qbRaw: 23.8, rbRaw: 28.5, wrRaw: 43.5, teRaw: 12.8, qbBias: -0.4, rbBias: 0.5,  wrBias: 0.7,  teBias: -0.5 },
-  { abbr: "CHI", name: "Chicago Bears",        qbRaw: 24.2, rbRaw: 28.2, wrRaw: 44.8, teRaw: 13.8, qbBias: 0.3,  rbBias: -0.6, wrBias: -0.8, teBias: 0.4  },
-  { abbr: "CAR", name: "Carolina Panthers",    qbRaw: 25.2, rbRaw: 31.5, wrRaw: 46.2, teRaw: 13.5, qbBias: -0.5, rbBias: 0.7,  wrBias: 0.9,  teBias: -0.6 },
+  { abbr: "BAL", name: "Baltimore Ravens",      qbRaw: 13.8, rbRaw: 16.2, wrRaw: 22.5, teRaw: 5.8,  qbBias:  0.4, rbBias:  0.6, wrBias:  0.8, teBias:  0.2 },
+  { abbr: "KC",  name: "Kansas City Chiefs",    qbRaw: 14.5, rbRaw: 17.4, wrRaw: 24.2, teRaw: 5.2,  qbBias: -0.3, rbBias: -0.5, wrBias: -0.6, teBias: -0.2 },
+  { abbr: "BUF", name: "Buffalo Bills",         qbRaw: 15.1, rbRaw: 16.8, wrRaw: 25.1, teRaw: 6.1,  qbBias:  0.2, rbBias:  0.3, wrBias:  0.5, teBias:  0.1 },
+  { abbr: "PIT", name: "Pittsburgh Steelers",   qbRaw: 14.8, rbRaw: 18.2, wrRaw: 26.3, teRaw: 6.4,  qbBias: -0.1, rbBias:  0.2, wrBias:  0.3, teBias: -0.1 },
+  { abbr: "MIN", name: "Minnesota Vikings",     qbRaw: 15.5, rbRaw: 18.8, wrRaw: 25.8, teRaw: 7.2,  qbBias:  0.5, rbBias:  0.7, wrBias:  0.9, teBias:  0.3 },
+  { abbr: "SF",  name: "San Francisco 49ers",   qbRaw: 15.2, rbRaw: 15.2, wrRaw: 27.4, teRaw: 7.5,  qbBias: -0.4, rbBias: -0.8, wrBias: -1.0, teBias: -0.3 },
+  { abbr: "MIA", name: "Miami Dolphins",        qbRaw: 15.8, rbRaw: 19.5, wrRaw: 26.5, teRaw: 6.8,  qbBias:  0.3, rbBias:  0.4, wrBias:  0.6, teBias:  0.2 },
+  { abbr: "DEN", name: "Denver Broncos",        qbRaw: 16.2, rbRaw: 17.8, wrRaw: 28.1, teRaw: 7.9,  qbBias: -0.2, rbBias:  0.1, wrBias:  0.2, teBias: -0.1 },
+  { abbr: "PHI", name: "Philadelphia Eagles",   qbRaw: 16.5, rbRaw: 19.2, wrRaw: 27.8, teRaw: 8.1,  qbBias:  0.1, rbBias: -0.3, wrBias: -0.4, teBias:  0.1 },
+  { abbr: "DAL", name: "Dallas Cowboys",        qbRaw: 16.8, rbRaw: 20.1, wrRaw: 28.5, teRaw: 7.6,  qbBias:  0.4, rbBias:  0.5, wrBias:  0.7, teBias:  0.2 },
+  { abbr: "GB",  name: "Green Bay Packers",     qbRaw: 17.4, rbRaw: 21.2, wrRaw: 30.2, teRaw: 13.2, qbBias: -0.3, rbBias: -0.2, wrBias: -0.3, teBias:  0.4 },
+  { abbr: "TB",  name: "Tampa Bay Buccaneers",  qbRaw: 17.8, rbRaw: 21.8, wrRaw: 31.5, teRaw: 9.2,  qbBias:  0.2, rbBias:  0.3, wrBias:  0.4, teBias: -0.2 },
+  { abbr: "NE",  name: "New England Patriots",  qbRaw: 17.2, rbRaw: 20.5, wrRaw: 30.8, teRaw: 8.8,  qbBias: -0.5, rbBias: -0.6, wrBias: -0.8, teBias: -0.3 },
+  { abbr: "LAR", name: "Los Angeles Rams",      qbRaw: 18.2, rbRaw: 29.5, wrRaw: 32.1, teRaw: 9.5,  qbBias:  0.1, rbBias:  0.2, wrBias:  0.3, teBias:  0.1 },
+  { abbr: "SEA", name: "Seattle Seahawks",      qbRaw: 18.5, rbRaw: 22.4, wrRaw: 32.8, teRaw: 10.1, qbBias:  0.3, rbBias: -0.1, wrBias: -0.2, teBias:  0.2 },
+  { abbr: "DET", name: "Detroit Lions",         qbRaw: 18.8, rbRaw: 22.8, wrRaw: 33.2, teRaw: 9.8,  qbBias: -0.2, rbBias:  0.4, wrBias:  0.5, teBias: -0.1 },
+  { abbr: "ATL", name: "Atlanta Falcons",       qbRaw: 19.2, rbRaw: 23.5, wrRaw: 33.8, teRaw: 10.4, qbBias:  0.4, rbBias: -0.3, wrBias: -0.4, teBias:  0.3 },
+  { abbr: "LV",  name: "Las Vegas Raiders",     qbRaw: 19.5, rbRaw: 23.2, wrRaw: 34.5, teRaw: 9.6,  qbBias: -0.1, rbBias:  0.2, wrBias:  0.3, teBias: -0.2 },
+  { abbr: "CIN", name: "Cincinnati Bengals",    qbRaw: 19.8, rbRaw: 24.1, wrRaw: 34.2, teRaw: 10.8, qbBias:  0.2, rbBias: -0.4, wrBias: -0.5, teBias:  0.1 },
+  { abbr: "JAX", name: "Jacksonville Jaguars",  qbRaw: 20.1, rbRaw: 24.5, wrRaw: 35.1, teRaw: 9.2,  qbBias: -0.3, rbBias:  0.3, wrBias:  0.4, teBias: -0.3 },
+  { abbr: "NYJ", name: "New York Jets",         qbRaw: 20.5, rbRaw: 24.8, wrRaw: 35.8, teRaw: 10.2, qbBias:  0.5, rbBias: -0.2, wrBias: -0.3, teBias:  0.2 },
+  { abbr: "LAC", name: "Los Angeles Chargers",  qbRaw: 20.8, rbRaw: 25.2, wrRaw: 36.2, teRaw: 11.2, qbBias: -0.4, rbBias:  0.5, wrBias:  0.6, teBias: -0.1 },
+  { abbr: "HOU", name: "Houston Texans",        qbRaw: 21.2, rbRaw: 25.8, wrRaw: 36.8, teRaw: 10.5, qbBias:  0.1, rbBias: -0.3, wrBias: -0.4, teBias:  0.3 },
+  { abbr: "WAS", name: "Washington Commanders", qbRaw: 21.5, rbRaw: 26.2, wrRaw: 37.5, teRaw: 11.5, qbBias: -0.2, rbBias:  0.4, wrBias:  0.5, teBias: -0.2 },
+  { abbr: "CLE", name: "Cleveland Browns",      qbRaw: 21.8, rbRaw: 26.5, wrRaw: 38.2, teRaw: 10.8, qbBias:  0.3, rbBias: -0.5, wrBias: -0.6, teBias:  0.1 },
+  { abbr: "NYG", name: "New York Giants",       qbRaw: 22.2, rbRaw: 27.1, wrRaw: 42.1, teRaw: 11.8, qbBias: -0.5, rbBias:  0.3, wrBias:  0.4, teBias: -0.3 },
+  { abbr: "NO",  name: "New Orleans Saints",    qbRaw: 22.5, rbRaw: 28.8, wrRaw: 38.8, teRaw: 14.2, qbBias:  0.4, rbBias: -0.4, wrBias: -0.5, teBias:  0.2 },
+  { abbr: "IND", name: "Indianapolis Colts",    qbRaw: 24.8, rbRaw: 30.8, wrRaw: 43.5, teRaw: 12.2, qbBias: -0.3, rbBias:  0.6, wrBias:  0.8, teBias: -0.4 },
+  { abbr: "TEN", name: "Tennessee Titans",      qbRaw: 23.5, rbRaw: 29.2, wrRaw: 42.8, teRaw: 11.8, qbBias:  0.2, rbBias: -0.7, wrBias: -0.9, teBias:  0.3 },
+  { abbr: "ARI", name: "Arizona Cardinals",     qbRaw: 23.8, rbRaw: 28.5, wrRaw: 43.5, teRaw: 12.8, qbBias: -0.4, rbBias:  0.5, wrBias:  0.7, teBias: -0.5 },
+  { abbr: "CHI", name: "Chicago Bears",         qbRaw: 24.2, rbRaw: 28.2, wrRaw: 44.8, teRaw: 13.8, qbBias:  0.3, rbBias: -0.6, wrBias: -0.8, teBias:  0.4 },
+  { abbr: "CAR", name: "Carolina Panthers",     qbRaw: 25.2, rbRaw: 31.5, wrRaw: 46.2, teRaw: 13.5, qbBias: -0.5, rbBias:  0.7, wrBias:  0.9, teBias: -0.6 },
 ];
 
 const GAMES_PLAYED_2025 = 17;
 
-// Reception adjustment per format (relative to half-PPR)
+// Reception adjustments relative to half-PPR
 // based on avg receptions per game: RB ~3, WR ~7, TE ~4
 const FORMAT_ADJUSTMENTS = {
   standard: { rb: -1.5, wr: -3.5, te: -2.0 },
@@ -93,13 +93,18 @@ function applyFormat(seed: TeamSeed, format: ScoringFormat) {
 
 // ─── Seeding ───────────────────────────────────────────────────────────────────
 
-async function seedSnapshotsIfEmpty(): Promise<void> {
+async function seedIfEmpty(): Promise<void> {
+  if (seeded) return;
+
   const existing = await db
     .select({ id: fantasyPointsAllowedSnapshotsTable.id })
     .from(fantasyPointsAllowedSnapshotsTable)
     .limit(1);
 
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    seeded = true;
+    return;
+  }
 
   logger.info("Seeding FPA snapshot data for 2025 preseason baseline");
 
@@ -116,15 +121,15 @@ async function seedSnapshotsIfEmpty(): Promise<void> {
         defenseTeamAbbr: t.abbr,
         defenseTeamName: t.name,
         scoringFormat: format,
-        qbFpaRaw: v.qbRaw.toString(),
-        rbFpaRaw: v.rbRaw.toString(),
-        wrFpaRaw: v.wrRaw.toString(),
-        teFpaRaw: v.teRaw.toString(),
+        qbFpaRaw:  v.qbRaw.toString(),
+        rbFpaRaw:  v.rbRaw.toString(),
+        wrFpaRaw:  v.wrRaw.toString(),
+        teFpaRaw:  v.teRaw.toString(),
         offFpaRaw: offRaw.toString(),
-        qbFpaAdj: v.qbAdj.toString(),
-        rbFpaAdj: v.rbAdj.toString(),
-        wrFpaAdj: v.wrAdj.toString(),
-        teFpaAdj: v.teAdj.toString(),
+        qbFpaAdj:  v.qbAdj.toString(),
+        rbFpaAdj:  v.rbAdj.toString(),
+        wrFpaAdj:  v.wrAdj.toString(),
+        teFpaAdj:  v.teAdj.toString(),
         offFpaAdj: offAdj.toString(),
         gamesPlayed: GAMES_PLAYED_2025,
         dataMode: "preseason_baseline",
@@ -133,6 +138,7 @@ async function seedSnapshotsIfEmpty(): Promise<void> {
   );
 
   await db.insert(fantasyPointsAllowedSnapshotsTable).values(rows);
+  seeded = true;
   logger.info({ count: rows.length }, "FPA seed complete");
 }
 
@@ -183,18 +189,16 @@ function getDataMode(weekNumber: number | null): {
       isPreseason: false,
     };
   }
-  if (weekNumber >= 5 && weekNumber < 12) {
+  if (weekNumber < 12) {
     return {
       dataMode: `Week ${weekNumber} — Current Season`,
-      methodology:
-        `Week ${weekNumber}: Mostly 2026 current-season data with a small stabilizing prior from 2025.`,
+      methodology: `Week ${weekNumber}: mostly 2026 current-season data with a small stabilizing prior from 2025.`,
       isPreseason: false,
     };
   }
   return {
     dataMode: `Week ${weekNumber} — Rolling 10 Weeks`,
-    methodology:
-      `Week ${weekNumber}: Rolling 10-week window of 2026 regular-season data. Full-season averages are no longer used.`,
+    methodology: `Week ${weekNumber}: rolling 10-week window of 2026 regular-season data. Full-season averages are no longer used.`,
     isPreseason: false,
   };
 }
@@ -210,7 +214,7 @@ function rankAsc<T>(rows: T[], key: keyof T): Map<T, number> {
   return map;
 }
 
-// ─── Build row response from snapshot ────────────────────────────────────────
+// ─── Build rows from snapshots ────────────────────────────────────────────────
 
 interface ProcessedRow {
   team: string;
@@ -231,31 +235,18 @@ function buildRows(
   snapshots: FpaSnapshot[],
   view: "raw" | "adjusted",
 ): ProcessedRow[] {
+  const pick = (raw: string, adj: string) =>
+    parseFloat(view === "raw" ? raw : adj);
+
   const rows: ProcessedRow[] = snapshots.map((s) => ({
     team: s.defenseTeamName,
     teamAbbr: s.defenseTeamAbbr,
-    qbFpa:
-      view === "raw"
-        ? parseFloat(s.qbFpaRaw)
-        : parseFloat(s.qbFpaAdj),
-    rbFpa:
-      view === "raw"
-        ? parseFloat(s.rbFpaRaw)
-        : parseFloat(s.rbFpaAdj),
-    wrFpa:
-      view === "raw"
-        ? parseFloat(s.wrFpaRaw)
-        : parseFloat(s.wrFpaAdj),
-    teFpa:
-      view === "raw"
-        ? parseFloat(s.teFpaRaw)
-        : parseFloat(s.teFpaAdj),
-    offFpa:
-      view === "raw"
-        ? parseFloat(s.offFpaRaw)
-        : parseFloat(s.offFpaAdj),
+    qbFpa: pick(s.qbFpaRaw, s.qbFpaAdj),
+    rbFpa: pick(s.rbFpaRaw, s.rbFpaAdj),
+    wrFpa: pick(s.wrFpaRaw, s.wrFpaAdj),
+    teFpa: pick(s.teFpaRaw, s.teFpaAdj),
+    offFpa: pick(s.offFpaRaw, s.offFpaAdj),
     gamesPlayed: s.gamesPlayed,
-    // placeholders — will be filled after ranking
     qbRank: 0,
     rbRank: 0,
     wrRank: 0,
@@ -290,12 +281,12 @@ router.get(
 
     const { season, format, view } = parsed.data;
     const safeFormat = (format ?? "half") as ScoringFormat;
-    const safeView = (view ?? "adjusted") as "raw" | "adjusted";
+    const safeView   = (view   ?? "adjusted") as "raw" | "adjusted";
 
-    await seedSnapshotsIfEmpty();
+    await seedIfEmpty();
 
-    // For 2026 preseason, read from the 2025 baseline snapshots
-    const dbSeason = season === 2026 ? 2025 : season;
+    // 2026 preseason reads from the 2025 baseline snapshots
+    const dbSeason = season === 2026 ? 2025 : (season ?? 2025);
 
     const snapshots = await db
       .select()
@@ -339,11 +330,11 @@ router.get(
 
     const { season, format, view } = parsed.data;
     const safeFormat = (format ?? "half") as ScoringFormat;
-    const safeView = (view ?? "adjusted") as "raw" | "adjusted";
+    const safeView   = (view   ?? "adjusted") as "raw" | "adjusted";
 
-    await seedSnapshotsIfEmpty();
+    await seedIfEmpty();
 
-    const dbSeason = season === 2026 ? 2025 : season;
+    const dbSeason = season === 2026 ? 2025 : (season ?? 2025);
 
     const snapshots = await db
       .select()
@@ -363,30 +354,20 @@ router.get(
     const rows = buildRows(snapshots, safeView);
 
     const headers = [
-      "Team",
-      "QB Rank",
-      "QB FPA",
-      "RB Rank",
-      "RB FPA",
-      "WR Rank",
-      "WR FPA",
-      "TE Rank",
-      "TE FPA",
-      "OFF FPA",
-      "Games Played",
+      "Team", "QB Rank", "QB FPA",
+      "RB Rank", "RB FPA",
+      "WR Rank", "WR FPA",
+      "TE Rank", "TE FPA",
+      "OFF FPA", "Games Played",
     ];
 
     const csvRows = rows.map((r) =>
       [
         r.team,
-        r.qbRank,
-        r.qbFpa.toFixed(1),
-        r.rbRank,
-        r.rbFpa.toFixed(1),
-        r.wrRank,
-        r.wrFpa.toFixed(1),
-        r.teRank,
-        r.teFpa.toFixed(1),
+        r.qbRank, r.qbFpa.toFixed(1),
+        r.rbRank, r.rbFpa.toFixed(1),
+        r.wrRank, r.wrFpa.toFixed(1),
+        r.teRank, r.teFpa.toFixed(1),
         r.offFpa.toFixed(1),
         r.gamesPlayed,
       ].join(","),

@@ -10,7 +10,9 @@ Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/api-server run ingest-fpa` — ingest FPA from nflverse into Postgres (append `-- --baseline 2025 --current 2026` to override seasons)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Optional env: `FPA_BASELINE_SEASON` (default 2025), `FPA_CURRENT_SEASON` (default 2026)
 
 ## Stack
 
@@ -26,15 +28,20 @@ Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps
 
 - `lib/api-spec/openapi.yaml` — API contract source of truth
 - `lib/db/src/schema/fantasyPointsAllowed.ts` — FPA DB schema (games + snapshots tables)
-- `artifacts/api-server/src/routes/nfl/fpa.ts` — FPA route handlers + seed data + data mode logic
+- `artifacts/api-server/src/lib/nflverse.ts` — nflverse fetch + CSV parse + fantasy scoring (Std/Half/PPR)
+- `artifacts/api-server/src/lib/fpa-ingest.ts` — FPA aggregation, baseline blend, Postgres writes
+- `artifacts/api-server/src/scripts/ingest-fpa.ts` — ingest CLI
+- `artifacts/api-server/src/routes/nfl/fpa.ts` — FPA route handlers + data mode logic
 - `artifacts/statchasers/src/` — React frontend
 
 ## Architecture decisions
 
-- FPA snapshots are seeded on first request (lazy seed pattern) — no separate migration/seed script needed.
-- Three scoring formats (standard/half/ppr) are stored as separate snapshot rows; format adjustment is applied from half-PPR base values during seeding.
-- Data mode weighting (preseason vs regular season) is determined server-side based on `weekNumber`; currently returns preseason baseline (70% 2025 full season + 30% final 8 weeks).
-- Adjusted FPA uses per-team schedule bias offsets baked into seed data; in production these would be computed from actual schedule matchup data.
+- **Data source is nflverse.** FPA is computed from the weekly player-stats CSV at `github.com/nflverse/nflverse-data/releases/download/player_stats/stats_player_week_<season>.csv`. Fantasy points are computed manually per player-row for all three formats (the CSV's own `fantasy_points`/`fantasy_points_ppr` columns are used only to validate the formula; Half-PPR is computed since it isn't shipped).
+- Ingest groups scored rows by (season, week, opponent_team→defense, position) for QB/RB/WR/TE, then `raw_fpa = total points allowed to a position / games the defense played`. Granular rows land in `fantasy_points_allowed_games`; the per-defense/format served numbers land in `fantasy_points_allowed_snapshots`.
+- Preseason baseline = `0.70 * full 2025 season FPA + 0.30 * final 8 weeks of 2025`. Once 2026 games exist, the baseline is blended with live 2026 FPA, with the live weight rising by week (wk1 .25 → wk4 .80 → wk12+ rolling 10-week window only).
+- Adjusted FPA is a strength-of-schedule correction computed from the same data (a defense's raw FPA minus how much stronger/weaker than league-average the offenses it faced were, per position). Raw FPA is the primary/default view.
+- Three scoring formats (standard/half/ppr) are stored as separate snapshot rows.
+- Ingest is run via the `ingest-fpa` script (schedule it weekly in-season). As a fallback the API runs a one-time lazy ingest if the snapshots table is empty; concurrent requests share one in-flight ingest.
 - CSV download is served directly from the API as `text/csv` — no client-side generation needed.
 
 ## Product
@@ -47,7 +54,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- DB seed runs lazily on first API request — first cold-start request takes ~80ms extra.
+- If snapshots are empty, the first API request triggers a lazy nflverse ingest (fetches a ~7MB CSV + computes) — that one request is slow. Prefer running `ingest-fpa` ahead of time.
+- nflverse uses `LA` (not `LAR`) for the Rams in `opponent_team`; see `TEAM_NAMES` in `nflverse.ts`. Seasons not yet published return HTTP 404 (`NflverseSeasonUnavailableError`) — handled as "preseason, baseline only".
 - After OpenAPI spec changes always run `pnpm --filter @workspace/api-spec run codegen` before touching route or frontend code.
 - Drizzle `numeric` columns return strings from the DB — always `parseFloat()` before arithmetic.
 

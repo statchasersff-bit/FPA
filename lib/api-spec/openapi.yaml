@@ -49,7 +49,7 @@ paths:
           schema:
             type: string
             enum: [raw, adjusted]
-            default: adjusted
+            default: raw
       responses:
         "200":
           description: FPA data for all teams
@@ -79,7 +79,7 @@ paths:
           schema:
             type: string
             enum: [raw, adjusted]
-            default: adjusted
+            default: raw
       responses:
         "200":
           description: CSV download
