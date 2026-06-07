@@ -116,8 +116,8 @@ function num(v: string | undefined): number {
 
 // ─── Fantasy scoring ─────────────────────────────────────────────────────────
 
-// Standard scoring (matches nflverse `fantasy_points`):
-//   pass: 0.04/yd, 4/TD, -2/INT
+// Standard scoring:
+//   pass: 0.04/yd, 4/TD, -1/INT
 //   rush: 0.1/yd, 6/TD
 //   recv: 0.1/yd, 6/TD
 //   2pt conversions: 2 each (pass/rush/recv)
@@ -151,7 +151,7 @@ export function scoreRow(get: (col: string) => string | undefined): {
   const base =
     g("passing_yards") * 0.04 +
     g("passing_tds") * 4 +
-    g("passing_interceptions") * -2 +
+    g("passing_interceptions") * -1 +
     (g("sack_fumbles_lost") +
       g("rushing_fumbles_lost") +
       g("receiving_fumbles_lost")) *

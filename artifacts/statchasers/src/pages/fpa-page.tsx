@@ -10,9 +10,15 @@ import {
   ChevronsUpDown,
   Info,
   ShieldAlert,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -57,7 +63,7 @@ type SortField =
 type SortDirection = "asc" | "desc";
 
 // ─── Matchup tiers ───────────────────────────────────────────────────────────
-// Rank 1 = toughest (fewest pts allowed). Rank 32 = easiest (most pts allowed).
+// Rank 1 = easiest (most pts allowed). Rank 32 = toughest (fewest pts allowed).
 
 type Tier = {
   key: "tough" | "neutral" | "good" | "smash";
@@ -72,42 +78,35 @@ type Tier = {
 function getTier(rank: number): Tier {
   if (rank <= 8)
     return {
-      key: "tough",
-      label: "Tough",
-      pill: "text-[hsl(6_78%_64%)] bg-[hsl(6_72%_52%/0.12)] border-[hsl(6_72%_52%/0.28)]",
-      dot: "bg-[hsl(6_78%_60%)]",
-      heat: "bg-[hsl(6_72%_52%/0.07)]",
+      key: "smash",
+      label: "Smash",
+      pill: "text-[hsl(151_68%_56%)] bg-[hsl(151_60%_45%/0.12)] border-[hsl(151_60%_45%/0.30)]",
+      dot: "bg-[hsl(151_68%_50%)]",
+      heat: "bg-[hsl(151_60%_45%/0.10)]",
     };
   if (rank <= 16)
-    return {
-      key: "neutral",
-      label: "Neutral",
-      pill: "text-muted-foreground bg-white/[0.04] border-white/10",
-      dot: "bg-muted-foreground",
-      heat: "",
-    };
-  if (rank <= 24)
     return {
       key: "good",
       label: "Good",
       pill: "text-primary bg-primary/10 border-primary/30",
       dot: "bg-primary",
+      heat: "",
+    };
+  if (rank <= 24)
+    return {
+      key: "neutral",
+      label: "Neutral",
+      pill: "text-muted-foreground bg-white/[0.04] border-white/10",
+      dot: "bg-muted-foreground",
       heat: "bg-[hsl(43_96%_56%/0.09)]",
     };
   return {
-    key: "smash",
-    label: "Smash",
-    pill: "text-[hsl(151_68%_56%)] bg-[hsl(151_60%_45%/0.12)] border-[hsl(151_60%_45%/0.30)]",
-    dot: "bg-[hsl(151_68%_50%)]",
-    heat: "bg-[hsl(151_60%_45%/0.10)]",
+    key: "tough",
+    label: "Tough",
+    pill: "text-[hsl(6_78%_64%)] bg-[hsl(6_72%_52%/0.12)] border-[hsl(6_72%_52%/0.28)]",
+    dot: "bg-[hsl(6_78%_60%)]",
+    heat: "bg-[hsl(6_72%_52%/0.07)]",
   };
-}
-
-function overallLabel(rank: number): string {
-  if (rank <= 8) return "Very Tough";
-  if (rank <= 16) return "Neutral";
-  if (rank <= 24) return "Favorable";
-  return "Very Favorable";
 }
 
 // ─── Team logos (ESPN CDN with abbreviation fallback) ────────────────────────
@@ -180,6 +179,123 @@ function TierBadge({ rank }: { rank: number }) {
   );
 }
 
+// ─── Scoring settings dropdown ────────────────────────────────────────────────
+// Mirrors the scoring rules applied in the ingest pipeline (api-server
+// scoreRow). The per-reception value is the only rule that varies by format.
+
+const RECEPTION_BY_FORMAT: Record<ScoringFormat, string> = {
+  standard: "0",
+  half: "0.5",
+  ppr: "1",
+};
+
+const FORMAT_LABEL: Record<ScoringFormat, string> = {
+  standard: "Standard",
+  half: "Half PPR",
+  ppr: "PPR",
+};
+
+function ScoringSettings({ format }: { format: ScoringFormat }) {
+  const rules: { group: string; items: [string, string][] }[] = [
+    {
+      group: "Passing",
+      items: [
+        ["Yards", "0.04 / yd"],
+        ["Touchdown", "4"],
+        ["Interception", "−1"],
+        ["2-pt conversion", "2"],
+      ],
+    },
+    {
+      group: "Rushing",
+      items: [
+        ["Yards", "0.1 / yd"],
+        ["Touchdown", "6"],
+        ["2-pt conversion", "2"],
+      ],
+    },
+    {
+      group: "Receiving",
+      items: [
+        ["Reception", `${RECEPTION_BY_FORMAT[format]} / catch`],
+        ["Yards", "0.1 / yd"],
+        ["Touchdown", "6"],
+        ["2-pt conversion", "2"],
+      ],
+    },
+    {
+      group: "Misc",
+      items: [
+        ["Fumble lost", "−2"],
+        ["Special-teams TD", "6"],
+      ],
+    },
+  ];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          data-testid="button-scoring-settings"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Scoring settings
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 p-0">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Scoring rules
+          </span>
+          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+            {FORMAT_LABEL[format]}
+          </span>
+        </div>
+        <div className="max-h-80 overflow-y-auto px-3 py-2.5">
+          {rules.map(({ group, items }) => (
+            <div key={group} className="mb-2.5 last:mb-0">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group}
+              </div>
+              <dl className="space-y-1">
+                {items.map(([label, value]) => {
+                  const isReception = label === "Reception";
+                  return (
+                    <div
+                      key={label}
+                      className={cn(
+                        "flex items-center justify-between text-xs",
+                        isReception && "font-semibold text-primary",
+                      )}
+                    >
+                      <dt
+                        className={cn(
+                          "text-muted-foreground",
+                          isReception && "text-primary",
+                        )}
+                      >
+                        {label}
+                      </dt>
+                      <dd className="font-mono tabular-nums text-foreground">
+                        {value}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-border px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">
+          Only the per-reception value changes with the selected scoring format.
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function FpaPage() {
@@ -190,17 +306,19 @@ export default function FpaPage() {
   const [sortField, setSortField] = useState<SortField>("offFpa");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showMethodology, setShowMethodology] = useState(false);
+  const [showFpaInfo, setShowFpaInfo] = useState(false);
+  const [showAfpaInfo, setShowAfpaInfo] = useState(false);
 
   const { data, isLoading, error } = useGetNflFpa(
     { season, format, view },
     { query: { queryKey: getGetNflFpaQueryKey({ season, format, view }) } },
   );
 
-  // Attach a client-side OFF rank (1 = toughest = lowest offFpa).
+  // Attach a client-side OFF rank (1 = easiest = highest offFpa).
   const rows: Row[] = useMemo(() => {
     if (!data?.rows) return [];
     const base = data.rows as Omit<Row, "offRank">[];
-    const offOrder = [...base].sort((a, b) => a.offFpa - b.offFpa);
+    const offOrder = [...base].sort((a, b) => b.offFpa - a.offFpa);
     const offRankByAbbr = new Map<string, number>();
     offOrder.forEach((r, i) => offRankByAbbr.set(r.teamAbbr, i + 1));
     return base.map((r) => ({ ...r, offRank: offRankByAbbr.get(r.teamAbbr)! }));
@@ -296,9 +414,9 @@ export default function FpaPage() {
 
         <div className="relative mx-auto max-w-[1400px] space-y-6 px-[4.8px] py-6 md:px-[9.6px] md:py-8">
           {/* ─── Control panel ───────────────────────────────────────── */}
-          <div className="sc-fpa-controls sticky top-0 z-30 -mx-[4.8px] space-y-3 border-y border-border bg-card/85 px-[4.8px] py-3 shadow-lg shadow-black/20 ring-1 ring-primary/10 backdrop-blur-md md:mx-0 md:rounded-xl md:border md:px-4">
+          <div className="sc-fpa-controls -mx-[4.8px] space-y-3 border-y border-border bg-card/85 px-[4.8px] py-3 shadow-lg shadow-black/20 ring-1 ring-primary/10 backdrop-blur-md md:mx-0 md:rounded-xl md:border md:px-4">
             {/* Controls row: segmented controls + CSV */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
+            <div className="sc-fpa-controls__top flex flex-wrap items-center gap-x-4 gap-y-2.5">
               <ControlGroup label="Scoring">
                 <Chips
                   value={format}
@@ -331,60 +449,121 @@ export default function FpaPage() {
                 />
               </ControlGroup>
 
-              <Button
-                onClick={handleDownloadCsv}
-                className="ml-auto h-8 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                data-testid="button-download-csv"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Download CSV</span>
-                <span className="sm:hidden">CSV</span>
-              </Button>
+              <div className="sc-fpa-csv-wrap ml-auto hidden md:block">
+                <Button
+                  onClick={handleDownloadCsv}
+                  className="sc-fpa-download-btn h-8 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                  data-testid="button-download-csv"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download CSV
+                </Button>
+              </div>
             </div>
 
-            {/* Bottom row: preseason baseline notice */}
-            <div className="border-t border-border/50 pt-2.5">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed">
-                <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-[hsl(220_47%_24%)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[hsl(220_47%_24%)]" />
-                  Preseason Baseline Active:
-                </span>
-                <span className="text-muted-foreground">
-                  Using 2025 full-season data and late-season trends until 2026
-                  sample sizes become reliable.
-                </span>
+            {/* Collapsible metric explainers */}
+            <div className="space-y-1.5 border-t border-border/50 pt-2.5">
+              <div>
                 <button
-                  onClick={() => setShowMethodology(!showMethodology)}
-                  className="inline-flex shrink-0 items-center gap-1 font-medium text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
-                  data-testid="button-toggle-methodology"
+                  onClick={() => setShowFpaInfo(!showFpaInfo)}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
+                  data-testid="button-toggle-fpa-info"
+                  aria-expanded={showFpaInfo}
                 >
                   <Info className="h-3 w-3" />
-                  How it works
+                  What Are Fantasy Points Allowed?
                   <ChevronDown
                     className={cn(
                       "h-3 w-3 transition-transform",
-                      showMethodology && "rotate-180",
+                      showFpaInfo && "rotate-180",
                     )}
                   />
                 </button>
+                {showFpaInfo && (
+                  <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                    Fantasy Points Allowed is a metric that indicates how good or
+                    bad each NFL defense is at limiting fantasy production to
+                    their opponents. The higher the FPA value, the more fantasy
+                    points the team gives up. On the flip side, the lower the FPA
+                    value, the less fantasy points a team gives up.
+                  </p>
+                )}
               </div>
+              <div>
+                <button
+                  onClick={() => setShowAfpaInfo(!showAfpaInfo)}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
+                  data-testid="button-toggle-afpa-info"
+                  aria-expanded={showAfpaInfo}
+                >
+                  <Info className="h-3 w-3" />
+                  What Are Adjusted Fantasy Points Allowed?
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      showAfpaInfo && "rotate-180",
+                    )}
+                  />
+                </button>
+                {showAfpaInfo && (
+                  <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                    Adjusted Fantasy Points Allowed (aFPA) takes raw FPA and
+                    corrects it for strength of schedule. A defense that has
+                    faced stronger-than-average offenses has its number nudged
+                    down, while one that has faced weaker-than-average offenses
+                    is nudged up — so every team is measured as if it played a
+                    neutral schedule. This makes matchups easier to compare
+                    across defenses that haven't faced the same opponents.
+                  </p>
+                )}
+              </div>
+              <div className="pt-0.5">
+                <ScoringSettings format={format} />
+              </div>
+            </div>
+
+            {/* Preseason baseline — collapsible */}
+            <div className="border-t border-border/50 pt-2.5">
+              <button
+                onClick={() => setShowMethodology(!showMethodology)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
+                data-testid="button-toggle-methodology"
+                aria-expanded={showMethodology}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[hsl(220_47%_24%)]" />
+                Preseason Baseline Active
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 transition-transform",
+                    showMethodology && "rotate-180",
+                  )}
+                />
+              </button>
               {showMethodology && (
-                <ul className="mt-2.5 grid gap-2 border-t border-border/40 pt-2.5 text-xs text-muted-foreground sm:grid-cols-2">
-                  {[
-                    ["Preseason", "70% 2025 full season + 30% final 8 weeks of 2025"],
-                    ["Weeks 1–4", "Blended baseline and 2026 data"],
-                    ["Week 5+",   "Mostly current-season data"],
-                    ["Week 12+",  "Rolling 10-week data"],
-                  ].map(([k, v]) => (
-                    <li key={k} className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-                      <span>
-                        <span className="font-semibold text-foreground">{k}:</span>{" "}
-                        {v}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-2 max-w-3xl space-y-2.5">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Using 2025 full-season data until 2026 sample sizes become
+                    reliable.
+                  </p>
+                  <ul className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                    {[
+                      ["Preseason", "100% 2025 full season"],
+                      ["Weeks 1–4", "Blended baseline and 2026 data"],
+                      ["Week 5+", "Mostly current-season data"],
+                      ["Week 12+", "Rolling 10-week data"],
+                    ].map(([k, v]) => (
+                      <li key={k} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                        <span>
+                          <span className="font-semibold text-foreground">
+                            {k}:
+                          </span>{" "}
+                          {v}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           </div>
@@ -399,14 +578,14 @@ export default function FpaPage() {
             </div>
           ) : (
             <>
-              {/* ─── Desktop table ─────────────────────────────────── */}
-              <div className="sc-fpa-table hidden overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-black/30 md:block">
+              {/* ─── Table ─────────────────────────────────────────── */}
+              <div className="sc-fpa-table overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-black/30">
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border bg-gradient-to-r from-[#0B1F3A] to-[#132A4A] text-[11px] uppercase tracking-wider text-background">
                         <th
-                          className="sticky left-0 z-10 cursor-pointer select-none bg-[#0B1F3A] px-4 py-3 text-left font-semibold hover:text-primary"
+                          className="cursor-pointer select-none bg-[#0B1F3A] px-4 py-3 text-left font-semibold hover:text-primary"
                           onClick={() => handleSort("team")}
                         >
                           Team <SortIcon field="team" />
@@ -427,7 +606,7 @@ export default function FpaPage() {
                       {isLoading ? (
                         Array.from({ length: 12 }).map((_, i) => (
                           <tr key={i}>
-                            <td className="sticky left-0 z-10 bg-card px-4 py-3">
+                            <td className="bg-card px-4 py-3">
                               <Skeleton className="h-6 w-28" />
                             </td>
                             {Array.from({
@@ -455,9 +634,11 @@ export default function FpaPage() {
                             className="group transition-colors hover:bg-[hsl(210_40%_98%)]"
                             data-testid={`row-team-${row.teamAbbr}`}
                           >
-                            <td className="sticky left-0 z-10 bg-card px-4 py-2.5 transition-colors group-hover:bg-[hsl(210_40%_98%)]">
+                            <td className="bg-card px-4 py-2.5 transition-colors group-hover:bg-[hsl(210_40%_98%)]">
                               <div className="flex items-center gap-2.5">
-                                <TeamLogo abbr={row.teamAbbr} />
+                                <span className="hidden sm:inline-flex">
+                                  <TeamLogo abbr={row.teamAbbr} />
+                                </span>
                                 <div className="leading-tight">
                                   <div className="text-[15px] font-extrabold leading-none tracking-tight text-foreground">
                                     {row.teamAbbr}
@@ -483,34 +664,6 @@ export default function FpaPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-
-              {/* ─── Mobile team cards ─────────────────────────────── */}
-              <div className="space-y-3 md:hidden">
-                {isLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-xl border border-border bg-card p-4"
-                    >
-                      <Skeleton className="h-7 w-32" />
-                      <Skeleton className="mt-3 h-5 w-full" />
-                      <Skeleton className="mt-2 h-5 w-full" />
-                    </div>
-                  ))
-                ) : processedRows.length === 0 ? (
-                  <div className="rounded-xl border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-                    No teams match your search.
-                  </div>
-                ) : (
-                  processedRows.map((row) => (
-                    <MobileTeamCard
-                      key={row.teamAbbr}
-                      row={row}
-                      positions={visiblePositions}
-                    />
-                  ))
-                )}
               </div>
             </>
           )}
@@ -542,8 +695,8 @@ function ControlGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="sc-fpa-control-group flex items-center gap-2">
+      <span className="sc-fpa-control-label inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
         {tooltip && (
           <Tooltip>
@@ -577,7 +730,13 @@ function Chips<T extends string>({
   disabledTooltip?: string;
 }) {
   return (
-    <div className="inline-flex rounded-lg bg-muted/40 p-0.5">
+    <div
+      className={cn(
+        "sc-fpa-segmented inline-flex rounded-lg bg-muted/40 p-0.5",
+        options.length === 3 && "sc-fpa-segmented--three",
+        options.length === 2 && "sc-fpa-segmented--two",
+      )}
+    >
       {options.map((opt) => {
         const active = value === opt.value;
         const btn = (
@@ -586,12 +745,13 @@ function Chips<T extends string>({
             onClick={() => !opt.disabled && onChange(opt.value)}
             data-testid={`chip-${opt.value}`}
             className={cn(
-              "rounded-[7px] px-2.5 py-1 text-xs font-semibold transition-all",
+              "sc-fpa-chip rounded-[7px] px-2.5 py-1 text-xs font-semibold transition-all",
+              active && "is-active",
               active
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : opt.disabled
                   ? "cursor-not-allowed text-muted-foreground/40"
-                  : "bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground",
+                  : "bg-black/[0.05] text-muted-foreground hover:bg-black/[0.09] hover:text-foreground",
             )}
           >
             {opt.label}
@@ -616,7 +776,7 @@ function Chips<T extends string>({
 }
 
 const POS_TOOLTIP =
-  "Higher FPA means an easier matchup. Rank 32 allows the most fantasy points; Rank 1 allows the fewest.";
+  "Higher FPA means an easier matchup. Rank 1 allows the most fantasy points; Rank 32 allows the fewest.";
 
 function PositionHeader({
   pos,
@@ -706,71 +866,3 @@ function PositionCells({
   );
 }
 
-function MobileTeamCard({
-  row,
-  positions,
-}: {
-  row: Row;
-  positions: PositionKey[];
-}) {
-  const overall = overallLabel(row.offRank);
-  const overallTier = getTier(row.offRank);
-  return (
-    <div
-      className="sc-fpa-mobile-card rounded-xl border border-border bg-card p-4"
-      data-testid={`mobile-card-${row.teamAbbr}`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <TeamLogo abbr={row.teamAbbr} size={36} />
-          <div className="leading-tight">
-            <div className="text-lg font-extrabold tracking-tight">
-              {row.teamAbbr}
-            </div>
-            <div className="text-[11px] text-muted-foreground">{row.team}</div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Overall
-          </div>
-          <div
-            className={cn("text-sm font-bold", overallTier.pill.split(" ")[0])}
-          >
-            {overall}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
-        {positions
-          .filter((p) => p !== "off")
-          .map((pos) => {
-            const rank = rankOf(row, pos);
-            const fpa = fpaOf(row, pos);
-            const heat = getTier(rank).heat;
-            return (
-              <div
-                key={pos}
-                className={cn(
-                  "flex items-center justify-between gap-2 rounded-md px-2 py-1 text-sm",
-                  heat,
-                )}
-              >
-                <span className="w-8 font-bold text-muted-foreground">
-                  {pos.toUpperCase()}
-                </span>
-                <span className="flex-1 font-mono tabular-nums text-foreground">
-                  {fpa.toFixed(1)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Rank {rank}
-                </span>
-                <TierBadge rank={rank} />
-              </div>
-            );
-          })}
-      </div>
-    </div>
-  );
-}
