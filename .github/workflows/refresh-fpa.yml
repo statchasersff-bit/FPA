@@ -1,63 +1,63 @@
 name: Refresh FPA
 
-  # Refreshes Fantasy Points Allowed data and pushes the latest JSON to WordPress.
-  #
-  # Replaces the old Replit-triggered refresh: nflverse is fetched, FPA/aFPA are
-  # computed, and the resulting JSON is POSTed to the WordPress sync endpoint
-  # (POST /wp-json/statchasers/v1/fpa/sync) with a bearer token. No Replit
-  # deployment or Replit scheduled deployment is involved.
-  #
-  # NOTE: this repo is a pnpm workspace — the root `preinstall` hook hard-blocks
-  # npm and the `scripts` package uses pnpm `catalog:` dependencies, so we use
-  # pnpm here (the pnpm equivalents of `npm ci` / `npm run refresh:fpa`).
+# Refreshes Fantasy Points Allowed data and pushes the latest JSON to WordPress.
+#
+# Replaces the old Replit-triggered refresh: nflverse is fetched, FPA/aFPA are
+# computed, and the resulting JSON is POSTed to the WordPress sync endpoint
+# (POST /wp-json/statchasers/v1/fpa/sync) with a bearer token. No Replit
+# deployment or Replit scheduled deployment is involved.
+#
+# NOTE: this repo is a pnpm workspace — the root `preinstall` hook hard-blocks
+# npm and the `scripts` package uses pnpm `catalog:` dependencies, so we use
+# pnpm here (the pnpm equivalents of `npm ci` / `npm run refresh:fpa`).
 
-  on:
-    schedule:
-      # Every 3 days at 09:00 UTC.
-      - cron: "0 9 */3 * *"
-    workflow_dispatch: {}
+on:
+  schedule:
+    # Every 3 days at 09:00 UTC.
+    - cron: "0 9 */3 * *"
+  workflow_dispatch: {}
 
-  # Avoid overlapping runs (a manual run while a scheduled one is in flight).
-  concurrency:
-    group: refresh-fpa
-    cancel-in-progress: false
+# Avoid overlapping runs (a manual run while a scheduled one is in flight).
+concurrency:
+  group: refresh-fpa
+  cancel-in-progress: false
 
-  jobs:
-    refresh:
-      runs-on: ubuntu-latest
-      timeout-minutes: 15
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        - name: Install pnpm
-          uses: pnpm/action-setup@v4
-          with:
-            version: 9
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
-        - name: Setup Node
-          uses: actions/setup-node@v4
-          with:
-            node-version: 24
-            cache: pnpm
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
 
-        # Equivalent of `npm ci` for this pnpm workspace.
-        - name: Install dependencies
-          run: pnpm install --frozen-lockfile
+      # Equivalent of `npm ci` for this pnpm workspace.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-        # Equivalent of `npm run refresh:fpa`. The script fetches nflverse data,
-        # computes FPA/aFPA, writes fpa-latest.json, and POSTs it to WordPress.
-        - name: Refresh FPA and sync to WordPress
-          run: pnpm run refresh:fpa
-          env:
-            STATCHASERS_FPA_SYNC_URL: ${{ secrets.STATCHASERS_FPA_SYNC_URL }}
-            STATCHASERS_FPA_SYNC_TOKEN: ${{ secrets.STATCHASERS_FPA_SYNC_TOKEN }}
+      # Equivalent of `npm run refresh:fpa`. The script fetches nflverse data,
+      # computes FPA/aFPA, writes fpa-latest.json, and POSTs it to WordPress.
+      - name: Refresh FPA and sync to WordPress
+        run: pnpm run refresh:fpa
+        env:
+          STATCHASERS_FPA_SYNC_URL: ${{ secrets.STATCHASERS_FPA_SYNC_URL }}
+          STATCHASERS_FPA_SYNC_TOKEN: ${{ secrets.STATCHASERS_FPA_SYNC_TOKEN }}
 
-        - name: Upload generated JSON
-          if: always()
-          uses: actions/upload-artifact@v4
-          with:
-            name: fpa-latest
-            path: fpa-latest.json
-            if-no-files-found: ignore
-            retention-days: 14
+      - name: Upload generated JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fpa-latest
+          path: fpa-latest.json
+          if-no-files-found: ignore
+          retention-days: 14
