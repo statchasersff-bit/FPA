@@ -8,13 +8,10 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  Search,
   Info,
-  TrendingUp,
   ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -27,9 +24,7 @@ import { cn } from "@/lib/utils";
 
 type ScoringFormat = "standard" | "half" | "ppr";
 type ViewMode = "raw" | "adjusted";
-type DataRange = "preseason" | "season" | "last5" | "last10";
 type PositionKey = "qb" | "rb" | "wr" | "te" | "off";
-type PositionFilter = "all" | PositionKey;
 
 type Row = {
   team: string;
@@ -70,6 +65,8 @@ type Tier = {
   // [text color, soft background, hairline border] kept in one className.
   pill: string;
   dot: string;
+  // Subtle table-cell heatmap tint.
+  heat: string;
 };
 
 function getTier(rank: number): Tier {
@@ -79,6 +76,7 @@ function getTier(rank: number): Tier {
       label: "Tough",
       pill: "text-[hsl(6_78%_64%)] bg-[hsl(6_72%_52%/0.12)] border-[hsl(6_72%_52%/0.28)]",
       dot: "bg-[hsl(6_78%_60%)]",
+      heat: "bg-[hsl(6_72%_52%/0.07)]",
     };
   if (rank <= 16)
     return {
@@ -86,6 +84,7 @@ function getTier(rank: number): Tier {
       label: "Neutral",
       pill: "text-muted-foreground bg-white/[0.04] border-white/10",
       dot: "bg-muted-foreground",
+      heat: "",
     };
   if (rank <= 24)
     return {
@@ -93,12 +92,14 @@ function getTier(rank: number): Tier {
       label: "Good",
       pill: "text-primary bg-primary/10 border-primary/30",
       dot: "bg-primary",
+      heat: "bg-[hsl(43_96%_56%/0.09)]",
     };
   return {
     key: "smash",
     label: "Smash",
     pill: "text-[hsl(151_68%_56%)] bg-[hsl(151_60%_45%/0.12)] border-[hsl(151_60%_45%/0.30)]",
     dot: "bg-[hsl(151_68%_50%)]",
+    heat: "bg-[hsl(151_60%_45%/0.10)]",
   };
 }
 
@@ -142,26 +143,12 @@ function TeamLogo({ abbr, size = 28 }: { abbr: string; size?: number }) {
 
 // ─── Small presentational helpers ────────────────────────────────────────────
 
-const POSITIONS: { key: PositionKey; label: string }[] = [
-  { key: "qb", label: "QB" },
-  { key: "rb", label: "RB" },
-  { key: "wr", label: "WR" },
-  { key: "te", label: "TE" },
-  { key: "off", label: "OFF" },
-];
-
 function rankOf(row: Row, pos: PositionKey): number {
   return row[`${pos}Rank` as keyof Row] as number;
 }
 function fpaOf(row: Row, pos: PositionKey): number {
   return row[`${pos}Fpa` as keyof Row] as number;
 }
-
-const ordinal = (n: number) => {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-};
 
 // Rank chip used inside the desktop table cells.
 function RankChip({ rank }: { rank: number }) {
@@ -196,11 +183,8 @@ function TierBadge({ rank }: { rank: number }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function FpaPage() {
-  const [format, setFormat] = useState<ScoringFormat>("half");
-  const [view, setView] = useState<ViewMode>("raw");
-  const [range, setRange] = useState<DataRange>("preseason");
-  const [position, setPosition] = useState<PositionFilter>("all");
-  const [search, setSearch] = useState("");
+  const [format, setFormat] = useState<ScoringFormat>("ppr");
+  const [view, setView] = useState<ViewMode>("adjusted");
   const season = 2026;
 
   const [sortField, setSortField] = useState<SortField>("offFpa");
@@ -222,14 +206,11 @@ export default function FpaPage() {
     return base.map((r) => ({ ...r, offRank: offRankByAbbr.get(r.teamAbbr)! }));
   }, [data?.rows]);
 
-  // When a single position is selected, sort by it by default.
-  const effectiveSortField: SortField =
-    position !== "all" && sortField === "offFpa"
-      ? (`${position}Fpa` as SortField)
-      : sortField;
+  // Schedule-adjusted view is labeled "aFPA" in the table.
+  const fpaLabel = view === "adjusted" ? "aFPA" : "FPA";
 
   const handleSort = (field: SortField) => {
-    if (effectiveSortField === field) {
+    if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
@@ -239,17 +220,8 @@ export default function FpaPage() {
   };
 
   const processedRows = useMemo(() => {
-    let r = rows;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      r = r.filter(
-        (row) =>
-          row.teamAbbr.toLowerCase().includes(q) ||
-          row.team.toLowerCase().includes(q),
-      );
-    }
-    const field = effectiveSortField;
-    return [...r].sort((a, b) => {
+    const field = sortField;
+    return [...rows].sort((a, b) => {
       const aVal = a[field];
       const bVal = b[field];
       if (typeof aVal === "string" && typeof bVal === "string") {
@@ -261,23 +233,7 @@ export default function FpaPage() {
         ? (aVal as number) - (bVal as number)
         : (bVal as number) - (aVal as number);
     });
-  }, [rows, search, effectiveSortField, sortDirection]);
-
-  // Summary cards — easiest matchup per position (rank 32) + toughest defense.
-  const summary = useMemo(() => {
-    if (rows.length === 0) return null;
-    const easiest = (pos: PositionKey) =>
-      rows.reduce((best, r) => (fpaOf(r, pos) > fpaOf(best, pos) ? r : best));
-    const toughestOverall = rows.reduce((best, r) =>
-      r.offRank < best.offRank ? r : best,
-    );
-    return {
-      qb: easiest("qb"),
-      rb: easiest("rb"),
-      wr: easiest("wr"),
-      toughest: toughestOverall,
-    };
-  }, [rows]);
+  }, [rows, sortField, sortDirection]);
 
   const handleDownloadCsv = () => {
     const cols: { header: string; value: (r: Row) => string | number }[] = [
@@ -302,13 +258,13 @@ export default function FpaPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `statchasers-fpa-${format}-${view}-${range}.csv`;
+    a.download = `statchasers-fpa-${format}-${view}-preseason.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (effectiveSortField !== field)
+    if (sortField !== field)
       return (
         <ChevronsUpDown className="ml-1 inline-block h-3.5 w-3.5 text-muted-foreground/40" />
       );
@@ -319,15 +275,12 @@ export default function FpaPage() {
     );
   };
 
-  // Which position blocks are visible in the table / cards.
-  const visiblePositions: PositionKey[] =
-    position === "all"
-      ? ["qb", "rb", "wr", "te", "off"]
-      : position === "off"
-        ? ["off"]
-        : [position];
+  // All position blocks are always shown.
+  const visiblePositions: PositionKey[] = ["qb", "rb", "wr", "te", "off"];
 
-  const tableColSpan = 1 + visiblePositions.length * 2;
+  // Rank columns and tier badges are hidden to keep the wide table readable.
+  const showRank = false;
+  const tableColSpan = 1 + visiblePositions.length * (showRank ? 2 : 1);
 
   return (
     <div className="sc-fpa-page min-h-[100dvh] bg-background text-foreground">
@@ -341,84 +294,11 @@ export default function FpaPage() {
           }}
         />
 
-        <div className="relative mx-auto max-w-[1400px] space-y-6 px-4 py-6 md:px-8 md:py-8">
-          {/* ─── Hero ─────────────────────────────────────────────────── */}
-          <header className="sc-fpa-hero">
-            <div className="mb-3 inline-flex items-center rounded-full border border-primary/40 bg-primary/5 px-3 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                {season} Preseason Baseline
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-              Fantasy Points Allowed{" "}
-              <span className="text-primary">by Position</span>
-            </h1>
-            <div className="mt-2 h-1 w-20 rounded-full bg-gradient-to-r from-primary to-primary/30" />
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Identify the best and toughest fantasy football matchups using raw
-              and schedule-adjusted points allowed by position.
-            </p>
-          </header>
-
-          {/* ─── Data mode card ──────────────────────────────────────── */}
-          <div className="sc-fpa-card rounded-xl border border-border bg-card/80 p-4 md:p-5">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/25">
-                <TrendingUp className="h-[18px] w-[18px] text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold text-foreground">
-                  Current Data Mode:{" "}
-                  <span className="text-primary">
-                    {data?.dataMode ?? "Preseason Baseline"}
-                  </span>
-                </h2>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground md:text-[13px]">
-                  Because no meaningful {season} regular-season sample exists
-                  yet, this page currently uses a blended preseason baseline
-                  built from 2025 full-season data and late-season 2025 trends.
-                  As {season} games are played, the model will gradually shift
-                  toward current-season data.
-                </p>
-                <button
-                  onClick={() => setShowMethodology(!showMethodology)}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
-                  data-testid="button-toggle-methodology"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                  How it works
-                  <ChevronDown
-                    className={cn(
-                      "h-3.5 w-3.5 transition-transform",
-                      showMethodology && "rotate-180",
-                    )}
-                  />
-                </button>
-                {showMethodology && (
-                  <ul className="mt-3 grid gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground sm:grid-cols-2">
-                    {[
-                      ["Preseason", "70% 2025 full season + 30% final 8 weeks of 2025"],
-                      ["Weeks 1–4", "Blended baseline and 2026 data"],
-                      ["Week 5+",   "Mostly current-season data"],
-                      ["Week 12+",  "Rolling 10-week data"],
-                    ].map(([k, v]) => (
-                      <li key={k} className="flex items-start gap-2">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-                        <span>
-                          <span className="font-semibold text-foreground">{k}:</span>{" "}
-                          {v}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ─── Controls ────────────────────────────────────────────── */}
-          <div className="sc-fpa-controls sticky top-0 z-30 -mx-4 border-y border-border bg-background/85 px-4 py-3 backdrop-blur-md md:mx-0 md:rounded-xl md:border md:px-4">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="relative mx-auto max-w-[1400px] space-y-6 px-[4.8px] py-6 md:px-[9.6px] md:py-8">
+          {/* ─── Control panel ───────────────────────────────────────── */}
+          <div className="sc-fpa-controls sticky top-0 z-30 -mx-[4.8px] space-y-3 border-y border-border bg-card/85 px-[4.8px] py-3 shadow-lg shadow-black/20 ring-1 ring-primary/10 backdrop-blur-md md:mx-0 md:rounded-xl md:border md:px-4">
+            {/* Controls row: segmented controls + CSV */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
               <ControlGroup label="Scoring">
                 <Chips
                   value={format}
@@ -451,132 +331,62 @@ export default function FpaPage() {
                 />
               </ControlGroup>
 
-              <Divider />
-
-              <ControlGroup label="Data Range">
-                <Chips
-                  value={range}
-                  onChange={(v) => setRange(v as DataRange)}
-                  options={[
-                    { value: "preseason", label: "Preseason" },
-                    { value: "season", label: "2026", disabled: true },
-                    { value: "last5", label: "Last 5", disabled: true },
-                    { value: "last10", label: "Last 10", disabled: true },
-                  ]}
-                  disabledTooltip="Begins blending in after Week 1"
-                />
-              </ControlGroup>
-
-              <div className="ml-auto flex flex-wrap items-center gap-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search team"
-                    className="h-8 w-36 rounded-lg border-border bg-muted/40 pl-8 text-xs focus-visible:ring-primary"
-                    data-testid="input-search-team"
-                  />
-                </div>
-                <Button
-                  onClick={handleDownloadCsv}
-                  className="h-8 gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                  data-testid="button-download-csv"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Download CSV
-                </Button>
-              </div>
+              <Button
+                onClick={handleDownloadCsv}
+                className="ml-auto h-8 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                data-testid="button-download-csv"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Download CSV</span>
+                <span className="sm:hidden">CSV</span>
+              </Button>
             </div>
 
-            {/* Position quick filter */}
-            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5">
-              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Position
-              </span>
-              {(["all", ...POSITIONS.map((p) => p.key)] as PositionFilter[]).map(
-                (p) => {
-                  const label =
-                    p === "all"
-                      ? "All"
-                      : POSITIONS.find((x) => x.key === p)!.label;
-                  const active = position === p;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPosition(p)}
-                      data-testid={`filter-position-${p}`}
-                      className={cn(
-                        "shrink-0 rounded-lg border px-3 py-1 text-xs font-semibold transition-colors",
-                        active
-                          ? "border-primary/50 bg-primary/15 text-primary"
-                          : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  );
-                },
+            {/* Bottom row: preseason baseline notice */}
+            <div className="border-t border-border/50 pt-2.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed">
+                <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-[hsl(220_47%_24%)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[hsl(220_47%_24%)]" />
+                  Preseason Baseline Active:
+                </span>
+                <span className="text-muted-foreground">
+                  Using 2025 full-season data and late-season trends until 2026
+                  sample sizes become reliable.
+                </span>
+                <button
+                  onClick={() => setShowMethodology(!showMethodology)}
+                  className="inline-flex shrink-0 items-center gap-1 font-medium text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
+                  data-testid="button-toggle-methodology"
+                >
+                  <Info className="h-3 w-3" />
+                  How it works
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      showMethodology && "rotate-180",
+                    )}
+                  />
+                </button>
+              </div>
+              {showMethodology && (
+                <ul className="mt-2.5 grid gap-2 border-t border-border/40 pt-2.5 text-xs text-muted-foreground sm:grid-cols-2">
+                  {[
+                    ["Preseason", "70% 2025 full season + 30% final 8 weeks of 2025"],
+                    ["Weeks 1–4", "Blended baseline and 2026 data"],
+                    ["Week 5+",   "Mostly current-season data"],
+                    ["Week 12+",  "Rolling 10-week data"],
+                  ].map(([k, v]) => (
+                    <li key={k} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                      <span>
+                        <span className="font-semibold text-foreground">{k}:</span>{" "}
+                        {v}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
-          </div>
-
-          {/* ─── Summary cards ───────────────────────────────────────── */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {summary ? (
-              <>
-                <SummaryCard
-                  label="Easiest QB Matchup"
-                  row={summary.qb}
-                  pos="qb"
-                  variant="easy"
-                />
-                <SummaryCard
-                  label="Easiest RB Matchup"
-                  row={summary.rb}
-                  pos="rb"
-                  variant="easy"
-                />
-                <SummaryCard
-                  label="Easiest WR Matchup"
-                  row={summary.wr}
-                  pos="wr"
-                  variant="easy"
-                />
-                <SummaryCard
-                  label="Toughest Overall Defense"
-                  row={summary.toughest}
-                  pos="off"
-                  variant="tough"
-                />
-              </>
-            ) : (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-border bg-card p-4"
-                >
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="mt-3 h-8 w-16" />
-                  <Skeleton className="mt-2 h-3 w-20" />
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* ─── Microcopy ───────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              Higher FPA means a more favorable fantasy matchup.{" "}
-              <span className="text-foreground/80">Rank 32</span> is the easiest
-              matchup. <span className="text-foreground/80">Rank 1</span> is the
-              toughest.
-            </p>
-            <p className="inline-flex items-center gap-1.5 text-[11px] text-primary/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Preseason baseline active. Current-season data blends in after Week
-              1.
-            </p>
           </div>
 
           {/* ─── Error state ─────────────────────────────────────────── */}
@@ -594,9 +404,9 @@ export default function FpaPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="border-b border-border bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <tr className="border-b border-border bg-gradient-to-r from-[#0B1F3A] to-[#132A4A] text-[11px] uppercase tracking-wider text-background">
                         <th
-                          className="sticky left-0 z-10 cursor-pointer select-none bg-muted/40 px-4 py-3 text-left font-semibold hover:text-foreground"
+                          className="sticky left-0 z-10 cursor-pointer select-none bg-[#0B1F3A] px-4 py-3 text-left font-semibold hover:text-primary"
                           onClick={() => handleSort("team")}
                         >
                           Team <SortIcon field="team" />
@@ -605,6 +415,8 @@ export default function FpaPage() {
                           <PositionHeader
                             key={pos}
                             pos={pos}
+                            fpaLabel={fpaLabel}
+                            showRank={showRank}
                             sortIcon={SortIcon}
                             onSort={handleSort}
                           />
@@ -619,7 +431,7 @@ export default function FpaPage() {
                               <Skeleton className="h-6 w-28" />
                             </td>
                             {Array.from({
-                              length: visiblePositions.length * 2,
+                              length: visiblePositions.length * (showRank ? 2 : 1),
                             }).map((__, j) => (
                               <td key={j} className="px-3 py-3">
                                 <Skeleton className="ml-auto h-6 w-12" />
@@ -640,17 +452,17 @@ export default function FpaPage() {
                         processedRows.map((row) => (
                           <tr
                             key={row.teamAbbr}
-                            className="group transition-colors hover:bg-primary/[0.04]"
+                            className="group transition-colors hover:bg-[hsl(210_40%_98%)]"
                             data-testid={`row-team-${row.teamAbbr}`}
                           >
-                            <td className="sticky left-0 z-10 bg-card px-4 py-2.5 transition-colors group-hover:bg-[hsl(222_20%_11%)]">
+                            <td className="sticky left-0 z-10 bg-card px-4 py-2.5 transition-colors group-hover:bg-[hsl(210_40%_98%)]">
                               <div className="flex items-center gap-2.5">
                                 <TeamLogo abbr={row.teamAbbr} />
                                 <div className="leading-tight">
-                                  <div className="font-bold tracking-tight">
+                                  <div className="text-[15px] font-extrabold leading-none tracking-tight text-foreground">
                                     {row.teamAbbr}
                                   </div>
-                                  <div className="hidden text-[11px] text-muted-foreground lg:block">
+                                  <div className="mt-0.5 hidden text-[11px] font-medium tracking-wide text-muted-foreground/70 lg:block">
                                     {row.team}
                                   </div>
                                 </div>
@@ -661,7 +473,8 @@ export default function FpaPage() {
                                 key={pos}
                                 pos={pos}
                                 row={row}
-                                showBadge={position !== "all"}
+                                showRank={showRank}
+                                showBadge={false}
                               />
                             ))}
                           </tr>
@@ -778,7 +591,7 @@ function Chips<T extends string>({
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : opt.disabled
                   ? "cursor-not-allowed text-muted-foreground/40"
-                  : "text-muted-foreground hover:text-foreground",
+                  : "bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground",
             )}
           >
             {opt.label}
@@ -802,63 +615,19 @@ function Chips<T extends string>({
   );
 }
 
-function SummaryCard({
-  label,
-  row,
-  pos,
-  variant,
-}: {
-  label: string;
-  row: Row;
-  pos: PositionKey;
-  variant: "easy" | "tough";
-}) {
-  const rank = rankOf(row, pos);
-  const fpa = fpaOf(row, pos);
-  const posLabel = pos.toUpperCase();
-  const accent = variant === "tough" ? "text-[hsl(6_78%_64%)]" : "text-primary";
-  return (
-    <div
-      className={cn(
-        "sc-fpa-card group relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40",
-        "hover:shadow-[0_0_0_1px_hsl(43_96%_56%/0.25),0_8px_24px_-8px_hsl(43_96%_56%/0.25)]",
-      )}
-    >
-      <div
-        className={cn(
-          "text-[10px] font-semibold uppercase tracking-wider",
-          accent,
-        )}
-      >
-        {label}
-      </div>
-      <div className="mt-2 flex items-center gap-2.5">
-        <TeamLogo abbr={row.teamAbbr} size={32} />
-        <span className="text-2xl font-extrabold tracking-tight">
-          {row.teamAbbr}
-        </span>
-      </div>
-      <div className="mt-1.5 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{fpa.toFixed(1)}</span>{" "}
-        {posLabel} FPA
-        <span className="mx-1.5 text-border">·</span>
-        <span className={accent}>
-          {ordinal(rank)} vs {posLabel}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 const POS_TOOLTIP =
   "Higher FPA means an easier matchup. Rank 32 allows the most fantasy points; Rank 1 allows the fewest.";
 
 function PositionHeader({
   pos,
+  fpaLabel,
+  showRank,
   sortIcon: SortIcon,
   onSort,
 }: {
   pos: PositionKey;
+  fpaLabel: string;
+  showRank: boolean;
   sortIcon: (props: { field: SortField }) => React.ReactElement;
   onSort: (f: SortField) => void;
 }) {
@@ -866,26 +635,28 @@ function PositionHeader({
   const isOff = pos === "off";
   return (
     <>
+      {showRank && (
+        <th
+          className={cn(
+            "cursor-pointer select-none px-3 py-3 text-right font-semibold hover:text-primary",
+            isOff && "bg-primary/[0.06]",
+          )}
+          onClick={() => onSort(`${pos}Rank` as SortField)}
+        >
+          {label} Rank <SortIcon field={`${pos}Rank` as SortField} />
+        </th>
+      )}
       <th
         className={cn(
-          "cursor-pointer select-none px-3 py-3 text-right font-semibold hover:text-foreground",
-          isOff && "bg-primary/[0.06]",
-        )}
-        onClick={() => onSort(`${pos}Rank` as SortField)}
-      >
-        {label} Rank <SortIcon field={`${pos}Rank` as SortField} />
-      </th>
-      <th
-        className={cn(
-          "cursor-pointer select-none border-r border-border/40 px-3 py-3 text-right font-semibold hover:text-foreground",
-          isOff && "border-r-0 bg-primary/[0.06] text-foreground",
+          "cursor-pointer select-none border-r border-border/40 px-3 py-3 text-right font-semibold hover:text-primary",
+          isOff && "border-r-0 bg-primary/[0.06] text-background",
         )}
         onClick={() => onSort(`${pos}Fpa` as SortField)}
       >
         <Tooltip>
           <TooltipTrigger asChild>
             <span>
-              {label} FPA <SortIcon field={`${pos}Fpa` as SortField} />
+              {label} {fpaLabel} <SortIcon field={`${pos}Fpa` as SortField} />
             </span>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs text-xs">
@@ -900,29 +671,33 @@ function PositionHeader({
 function PositionCells({
   pos,
   row,
+  showRank,
   showBadge,
 }: {
   pos: PositionKey;
   row: Row;
+  showRank: boolean;
   showBadge: boolean;
 }) {
   const rank = rankOf(row, pos);
   const fpa = fpaOf(row, pos);
   const isOff = pos === "off";
+  const heat = getTier(rank).heat;
   return (
     <>
-      <td className={cn("px-3 py-2.5 text-right", isOff && "bg-primary/[0.04]")}>
-        <div className="flex items-center justify-end gap-2">
-          {showBadge && <TierBadge rank={rank} />}
-          <RankChip rank={rank} />
-        </div>
-      </td>
+      {showRank && (
+        <td className={cn("px-3 py-2.5 text-right", heat)}>
+          <div className="flex items-center justify-end gap-2">
+            {showBadge && <TierBadge rank={rank} />}
+            <RankChip rank={rank} />
+          </div>
+        </td>
+      )}
       <td
         className={cn(
           "border-r border-border/40 px-3 py-2.5 text-right font-mono tabular-nums",
-          isOff
-            ? "border-r-0 bg-primary/[0.04] font-bold text-foreground"
-            : "font-medium",
+          heat,
+          isOff ? "border-r-0 font-bold text-foreground" : "font-medium",
         )}
       >
         {fpa.toFixed(1)}
@@ -973,10 +748,14 @@ function MobileTeamCard({
           .map((pos) => {
             const rank = rankOf(row, pos);
             const fpa = fpaOf(row, pos);
+            const heat = getTier(rank).heat;
             return (
               <div
                 key={pos}
-                className="flex items-center justify-between gap-2 text-sm"
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-md px-2 py-1 text-sm",
+                  heat,
+                )}
               >
                 <span className="w-8 font-bold text-muted-foreground">
                   {pos.toUpperCase()}
