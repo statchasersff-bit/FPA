@@ -3,7 +3,7 @@ Contributors: statchasers
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 
 Frontend display for StatChasers Fantasy Points Allowed data, served from a snapshot bundled inside the plugin.
@@ -48,7 +48,7 @@ No external services, secrets, or scheduled jobs are involved.
 
 == Changelog ==
 
-= 1.2.0 =
+= 1.2.1 =
 * Make the FPA table columns sortable: click any header to sort by that column, click again to reverse. Active column shows a gold arrow. Fix header text rendering gray on some themes (now forced white regardless of theme styles).
 * Add collapsible explainer panels above the table ("What Are Fantasy Points Allowed?", "What Are Adjusted Fantasy Points Allowed?") and a "Scoring settings" breakdown (shown as a floating popover) that reflects the selected scoring format.
 * Add a collapsible "Preseason Baseline Active" section with the week-by-week data-blend schedule, plus a footer methodology line — matching the StatChasers web app exactly.
