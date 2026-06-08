@@ -47,18 +47,19 @@ export const fantasyPointsAllowedSnapshotsTable = pgTable(
     defenseTeamAbbr: text("defense_team_abbr").notNull(),
     defenseTeamName: text("defense_team_name").notNull(),
     scoringFormat: text("scoring_format").notNull(), // standard, half, ppr
-    // Raw FPA
-    qbFpaRaw: numeric("qb_fpa_raw", { precision: 8, scale: 2 }).notNull(),
-    rbFpaRaw: numeric("rb_fpa_raw", { precision: 8, scale: 2 }).notNull(),
-    wrFpaRaw: numeric("wr_fpa_raw", { precision: 8, scale: 2 }).notNull(),
-    teFpaRaw: numeric("te_fpa_raw", { precision: 8, scale: 2 }).notNull(),
-    offFpaRaw: numeric("off_fpa_raw", { precision: 8, scale: 2 }).notNull(),
-    // Adjusted FPA
-    qbFpaAdj: numeric("qb_fpa_adj", { precision: 8, scale: 2 }).notNull(),
-    rbFpaAdj: numeric("rb_fpa_adj", { precision: 8, scale: 2 }).notNull(),
-    wrFpaAdj: numeric("wr_fpa_adj", { precision: 8, scale: 2 }).notNull(),
-    teFpaAdj: numeric("te_fpa_adj", { precision: 8, scale: 2 }).notNull(),
-    offFpaAdj: numeric("off_fpa_adj", { precision: 8, scale: 2 }).notNull(),
+    // Raw FPA — stored at full precision so ranking (routes/nfl/fpa.ts) sees
+    // true values; rounding to display happens only in the frontend (toFixed).
+    qbFpaRaw: numeric("qb_fpa_raw", { precision: 12, scale: 6 }).notNull(),
+    rbFpaRaw: numeric("rb_fpa_raw", { precision: 12, scale: 6 }).notNull(),
+    wrFpaRaw: numeric("wr_fpa_raw", { precision: 12, scale: 6 }).notNull(),
+    teFpaRaw: numeric("te_fpa_raw", { precision: 12, scale: 6 }).notNull(),
+    offFpaRaw: numeric("off_fpa_raw", { precision: 12, scale: 6 }).notNull(),
+    // Adjusted FPA — full precision (see note above).
+    qbFpaAdj: numeric("qb_fpa_adj", { precision: 12, scale: 6 }).notNull(),
+    rbFpaAdj: numeric("rb_fpa_adj", { precision: 12, scale: 6 }).notNull(),
+    wrFpaAdj: numeric("wr_fpa_adj", { precision: 12, scale: 6 }).notNull(),
+    teFpaAdj: numeric("te_fpa_adj", { precision: 12, scale: 6 }).notNull(),
+    offFpaAdj: numeric("off_fpa_adj", { precision: 12, scale: 6 }).notNull(),
     gamesPlayed: integer("games_played").notNull(),
     dataMode: text("data_mode").notNull(), // e.g. "preseason_baseline", "week1", etc.
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

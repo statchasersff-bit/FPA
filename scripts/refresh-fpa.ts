@@ -114,8 +114,6 @@ function teamName(abbr: string): string {
   return TEAM_NAMES[abbr] ?? abbr;
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
 // ─── CSV parsing (RFC-4180) ─────────────────────────────────────────────────────
 
 function parseCsv(text: string): string[][] {
@@ -563,14 +561,16 @@ function buildRows(
 ): ProcessedRow[] {
   const field: keyof PositionFpa = view === "raw" ? "raw" : "adj";
 
+  // Carry full precision through ranking and into the bundle; the display
+  // layer (WordPress sdt-fpa.js / the React table) rounds with toFixed(1).
+  // Rounding here would round-then-rank, letting sub-cent differences tie.
   const rows: ProcessedRow[] = [...blended.values()].map((def) => {
-    const qbFpa = round2(def.byPos.QB[field]);
-    const rbFpa = round2(def.byPos.RB[field]);
-    const wrFpa = round2(def.byPos.WR[field]);
-    const teFpa = round2(def.byPos.TE[field]);
-    const offFpa = round2(
-      def.byPos.QB[field] + def.byPos.RB[field] + def.byPos.WR[field] + def.byPos.TE[field],
-    );
+    const qbFpa = def.byPos.QB[field];
+    const rbFpa = def.byPos.RB[field];
+    const wrFpa = def.byPos.WR[field];
+    const teFpa = def.byPos.TE[field];
+    const offFpa =
+      def.byPos.QB[field] + def.byPos.RB[field] + def.byPos.WR[field] + def.byPos.TE[field];
     return {
       team: teamName(def.abbr),
       teamAbbr: def.abbr,
