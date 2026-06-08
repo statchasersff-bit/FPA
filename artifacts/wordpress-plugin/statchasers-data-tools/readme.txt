@@ -50,7 +50,8 @@ No external services, secrets, or scheduled jobs are involved.
 
 = 1.2.0 =
 * Make the FPA table columns sortable: click any header to sort by that column, click again to reverse. Active column shows a gold arrow. Fix header text rendering gray on some themes (now forced white regardless of theme styles).
-* Add collapsible explainer panels above the table ("What Are Fantasy Points Allowed?", "What Are Adjusted Fantasy Points Allowed?"), a "Scoring settings" breakdown that reflects the selected scoring format, and a preseason-baseline notice describing how the data blends prior- and current-season samples.
+* Add collapsible explainer panels above the table ("What Are Fantasy Points Allowed?", "What Are Adjusted Fantasy Points Allowed?") and a "Scoring settings" breakdown (shown as a floating popover) that reflects the selected scoring format.
+* Add a collapsible "Preseason Baseline Active" section with the week-by-week data-blend schedule, plus a footer methodology line — matching the StatChasers web app exactly.
 
 = 1.1.0 =
 * Switch to a bundled-data model: the FPA snapshot now ships inside the plugin at data/fpa-data.json and is read directly. Removed the /fpa/sync push endpoint, the FPA Sync Token setting, and the GitHub Actions refresh workflow. To update data, regenerate the file and re-upload the plugin.

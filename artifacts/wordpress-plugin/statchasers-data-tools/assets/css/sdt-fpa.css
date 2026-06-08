@@ -120,32 +120,87 @@
   border-color: var(--sdt-navy);
 }
 
-/* ── Notice (StatChasers blue) ─────────────────────────────────────────────── */
+/* ── Preseason baseline (collapsible) ──────────────────────────────────────── */
 
-.sdt-fpa__notice {
+.sdt-fpa__baseline {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--sdt-border);
-  font-size: 12px;
-  line-height: 1.5;
 }
 
-.sdt-fpa__notice-dot {
+.sdt-fpa__baseline-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 999px;
   background: var(--sdt-blue);
-  margin-right: 6px;
-  vertical-align: middle;
 }
 
-.sdt-fpa__notice-strong {
-  font-weight: 800;
-  color: var(--sdt-blue);
+.sdt-fpa__baseline-body {
+  margin: 8px 0 2px;
+  max-width: 60ch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.sdt-fpa__notice-text {
+.sdt-fpa__baseline-intro {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--sdt-muted);
+}
+
+.sdt-fpa__baseline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .sdt-fpa__baseline-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.sdt-fpa__baseline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--sdt-muted);
+}
+
+.sdt-fpa__baseline-bullet {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(244, 196, 48, 0.6);
+}
+
+.sdt-fpa__baseline-key {
+  font-weight: 700;
+  color: var(--sdt-navy);
+}
+
+/* ── Footer methodology line ───────────────────────────────────────────────── */
+
+.sdt-fpa__methodology {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--sdt-muted);
+}
+
+.sdt-fpa__methodology-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--sdt-muted);
 }
 

@@ -187,15 +187,69 @@
     // Metric explainers + scoring settings (collapsible).
     panel.appendChild(this.buildExplainers());
 
-    // Notice (StatChasers blue).
-    this.notice = el("div", "sdt-fpa__notice");
-    panel.appendChild(this.notice);
+    // Preseason baseline — collapsible, static copy mirroring the web app.
+    panel.appendChild(this.buildBaseline());
 
     this.container.appendChild(panel);
 
     // Table mount point.
     this.mount = el("div", "sdt-fpa__table-wrap");
     this.container.appendChild(this.mount);
+
+    // Footer methodology line (populated from the data snapshot).
+    this.footer = el("p", "sdt-fpa__methodology");
+    this.footer.style.display = "none";
+    this.container.appendChild(this.footer);
+  };
+
+  Widget.prototype.buildBaseline = function () {
+    var wrap = el("div", "sdt-fpa__explain sdt-fpa__baseline");
+    var btn = el("button", "sdt-fpa__explain-toggle");
+    btn.type = "button";
+    btn.setAttribute("aria-expanded", "false");
+    btn.appendChild(el("span", "sdt-fpa__baseline-dot"));
+    btn.appendChild(
+      el("span", "sdt-fpa__explain-title", "Preseason Baseline Active")
+    );
+    btn.appendChild(el("span", "sdt-fpa__explain-caret", "▾"));
+
+    var body = el("div", "sdt-fpa__baseline-body");
+    body.style.display = "none";
+    body.appendChild(
+      el(
+        "p",
+        "sdt-fpa__baseline-intro",
+        "Using 2025 full-season data until 2026 sample sizes become reliable."
+      )
+    );
+
+    var schedule = [
+      ["Preseason", "100% 2025 full season"],
+      ["Weeks 1–4", "Blended baseline and 2026 data"],
+      ["Week 5+", "Mostly current-season data"],
+      ["Week 12+", "Rolling 10-week data"],
+    ];
+    var list = el("ul", "sdt-fpa__baseline-list");
+    schedule.forEach(function (item) {
+      var li = el("li", "sdt-fpa__baseline-item");
+      li.appendChild(el("span", "sdt-fpa__baseline-bullet"));
+      var text = el("span", "sdt-fpa__baseline-text");
+      text.appendChild(el("span", "sdt-fpa__baseline-key", item[0] + ":"));
+      text.appendChild(document.createTextNode(" " + item[1]));
+      li.appendChild(text);
+      list.appendChild(li);
+    });
+    body.appendChild(list);
+
+    btn.addEventListener("click", function () {
+      var open = body.style.display === "none";
+      body.style.display = open ? "" : "none";
+      wrap.classList.toggle("is-open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(body);
+    return wrap;
   };
 
   Widget.prototype.buildGroup = function (label, options, stateKey) {
@@ -392,6 +446,7 @@
   };
 
   Widget.prototype.renderError = function () {
+    if (this.footer) this.footer.style.display = "none";
     this.mount.innerHTML = "";
     this.mount.appendChild(
       el(
@@ -407,7 +462,7 @@
     this.mount.innerHTML = "";
 
     if (!data || data.available === false || !data.rows || !data.rows.length) {
-      this.notice.style.display = "none";
+      this.footer.style.display = "none";
       this.mount.appendChild(
         el(
           "div",
@@ -419,25 +474,19 @@
       return;
     }
 
-    // Notice text.
-    this.notice.style.display = "";
-    this.notice.innerHTML = "";
-    var dot = el("span", "sdt-fpa__notice-dot");
-    var strong = el(
-      "span",
-      "sdt-fpa__notice-strong",
-      (data.dataMode || "Preseason Baseline") + ":"
-    );
-    var rest = el(
-      "span",
-      "sdt-fpa__notice-text",
-      " " +
-        (data.methodology ||
-          "Using prior full-season data until current-season sample sizes become reliable.")
-    );
-    this.notice.appendChild(dot);
-    this.notice.appendChild(strong);
-    this.notice.appendChild(rest);
+    // Footer methodology line — mirrors the web app's "Methodology · …" note.
+    if (data.methodology) {
+      this.footer.style.display = "";
+      this.footer.innerHTML = "";
+      this.footer.appendChild(
+        el("span", "sdt-fpa__methodology-label", "Methodology")
+      );
+      this.footer.appendChild(
+        document.createTextNode(" · " + data.methodology)
+      );
+    } else {
+      this.footer.style.display = "none";
+    }
 
     var self = this;
     var rows = data.rows.slice();
