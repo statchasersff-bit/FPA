@@ -272,6 +272,9 @@
   };
 
   Widget.prototype.buildScoringSettings = function () {
+    // Unlike the FPA/aFPA explainers (which expand inline), the scoring panel
+    // floats as a popover anchored to its button so it never pushes the table
+    // down. It closes on outside click or Escape, like the React Popover.
     var wrap = el("div", "sdt-fpa__explain sdt-fpa__scoring");
     var btn = el("button", "sdt-fpa__explain-toggle");
     btn.type = "button";
@@ -282,11 +285,31 @@
     var body = el("div", "sdt-fpa__scoring-body");
     body.style.display = "none";
     this.scoringBody = body;
-    btn.addEventListener("click", function () {
-      var open = body.style.display === "none";
-      body.style.display = open ? "" : "none";
-      wrap.classList.toggle("is-open", open);
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
+
+    function close() {
+      body.style.display = "none";
+      wrap.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("keydown", onKeydown, true);
+    }
+    function onDocClick(e) {
+      if (!wrap.contains(e.target)) close();
+    }
+    function onKeydown(e) {
+      if (e.key === "Escape" || e.keyCode === 27) close();
+    }
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (body.style.display === "none") {
+        body.style.display = "";
+        wrap.classList.add("is-open");
+        btn.setAttribute("aria-expanded", "true");
+        document.addEventListener("click", onDocClick, true);
+        document.addEventListener("keydown", onKeydown, true);
+      } else {
+        close();
+      }
     });
     wrap.appendChild(btn);
     wrap.appendChild(body);
