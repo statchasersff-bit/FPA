@@ -3,7 +3,7 @@ Contributors: statchasers
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 Frontend display for StatChasers Fantasy Points Allowed data, served from a snapshot bundled inside the plugin.
@@ -47,6 +47,10 @@ writes the result to the plugin's data/fpa-data.json:
 No external services, secrets, or scheduled jobs are involved.
 
 == Changelog ==
+
+= 1.2.0 =
+* Make the FPA table columns sortable: click any header to sort by that column, click again to reverse. Active column shows a gold arrow. Fix header text rendering gray on some themes (now forced white regardless of theme styles).
+* Add collapsible explainer panels above the table ("What Are Fantasy Points Allowed?", "What Are Adjusted Fantasy Points Allowed?"), a "Scoring settings" breakdown that reflects the selected scoring format, and a preseason-baseline notice describing how the data blends prior- and current-season samples.
 
 = 1.1.0 =
 * Switch to a bundled-data model: the FPA snapshot now ships inside the plugin at data/fpa-data.json and is read directly. Removed the /fpa/sync push endpoint, the FPA Sync Token setting, and the GitHub Actions refresh workflow. To update data, regenerate the file and re-upload the plugin.

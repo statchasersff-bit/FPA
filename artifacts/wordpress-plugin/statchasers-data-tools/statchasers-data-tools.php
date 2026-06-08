@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       StatChasers Data Tools
  * Description:        Frontend display for StatChasers analytics. Renders a branded Fantasy Points Allowed table from a data snapshot bundled inside the plugin.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Author:            StatChasers
  * Requires at least: 6.0
  * Requires PHP:      7.4
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'SDT_VERSION', '1.1.0' );
+define( 'SDT_VERSION', '1.2.0' );
 define( 'SDT_FILE', __FILE__ );
 define( 'SDT_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SDT_URL', plugin_dir_url( __FILE__ ) );

@@ -27,6 +27,25 @@
 
   var ESPN_ABBR = { WAS: "wsh" };
 
+  // Only the per-reception value varies by scoring format (mirrors the ingest
+  // pipeline's scoreRow). Everything else is constant across formats.
+  var RECEPTION_BY_FORMAT = { standard: "0", half: "0.5", ppr: "1" };
+  var FORMAT_LABEL = { standard: "Standard", half: "Half PPR", ppr: "PPR" };
+
+  var FPA_EXPLAINER =
+    "Fantasy Points Allowed is a metric that indicates how good or bad each " +
+    "NFL defense is at limiting fantasy production to their opponents. The " +
+    "higher the FPA value, the more fantasy points the team gives up. On the " +
+    "flip side, the lower the FPA value, the less fantasy points a team gives up.";
+
+  var AFPA_EXPLAINER =
+    "Adjusted Fantasy Points Allowed (aFPA) takes raw FPA and corrects it for " +
+    "strength of schedule. A defense that has faced stronger-than-average " +
+    "offenses has its number nudged down, while one that has faced " +
+    "weaker-than-average offenses is nudged up — so every team is measured as " +
+    "if it played a neutral schedule. This makes matchups easier to compare " +
+    "across defenses that haven't faced the same opponents.";
+
   // Rank 1 = easiest (most pts allowed). Rank 32 = toughest (fewest allowed).
   function tierHeat(rank) {
     if (rank <= 8) return "sdt-heat--smash"; // light green (easiest)
@@ -88,6 +107,9 @@
       container.getAttribute("data-view") || SDT_FPA.defaultView || "adjusted";
     this.cache = {};
     this.current = null;
+    // Sort state. Default: easiest overall defense first (highest OFF FPA).
+    this.sortKey = "off";
+    this.sortDir = "desc";
   }
 
   Widget.prototype.init = function () {
@@ -162,6 +184,9 @@
 
     panel.appendChild(controls);
 
+    // Metric explainers + scoring settings (collapsible).
+    panel.appendChild(this.buildExplainers());
+
     // Notice (StatChasers blue).
     this.notice = el("div", "sdt-fpa__notice");
     panel.appendChild(this.notice);
@@ -197,11 +222,150 @@
         });
         btn.classList.add("is-active");
         self.load();
+        if (stateKey === "format") self.renderScoringRules();
       });
       seg.appendChild(btn);
     });
     group.appendChild(seg);
     return group;
+  };
+
+  Widget.prototype.buildExplainers = function () {
+    var wrap = el("div", "sdt-fpa__explainers");
+    wrap.appendChild(
+      this.buildCollapsible(
+        "ⓘ",
+        "What Are Fantasy Points Allowed?",
+        FPA_EXPLAINER
+      )
+    );
+    wrap.appendChild(
+      this.buildCollapsible(
+        "ⓘ",
+        "What Are Adjusted Fantasy Points Allowed?",
+        AFPA_EXPLAINER
+      )
+    );
+    wrap.appendChild(this.buildScoringSettings());
+    return wrap;
+  };
+
+  Widget.prototype.buildCollapsible = function (icon, title, bodyText) {
+    var wrap = el("div", "sdt-fpa__explain");
+    var btn = el("button", "sdt-fpa__explain-toggle");
+    btn.type = "button";
+    btn.setAttribute("aria-expanded", "false");
+    btn.appendChild(el("span", "sdt-fpa__explain-icon", icon));
+    btn.appendChild(el("span", "sdt-fpa__explain-title", title));
+    btn.appendChild(el("span", "sdt-fpa__explain-caret", "▾"));
+    var body = el("p", "sdt-fpa__explain-body", bodyText);
+    body.style.display = "none";
+    btn.addEventListener("click", function () {
+      var open = body.style.display === "none";
+      body.style.display = open ? "" : "none";
+      wrap.classList.toggle("is-open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(body);
+    return wrap;
+  };
+
+  Widget.prototype.buildScoringSettings = function () {
+    var wrap = el("div", "sdt-fpa__explain sdt-fpa__scoring");
+    var btn = el("button", "sdt-fpa__explain-toggle");
+    btn.type = "button";
+    btn.setAttribute("aria-expanded", "false");
+    btn.appendChild(el("span", "sdt-fpa__explain-icon", "⚙"));
+    btn.appendChild(el("span", "sdt-fpa__explain-title", "Scoring settings"));
+    btn.appendChild(el("span", "sdt-fpa__explain-caret", "▾"));
+    var body = el("div", "sdt-fpa__scoring-body");
+    body.style.display = "none";
+    this.scoringBody = body;
+    btn.addEventListener("click", function () {
+      var open = body.style.display === "none";
+      body.style.display = open ? "" : "none";
+      wrap.classList.toggle("is-open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(body);
+    this.renderScoringRules();
+    return wrap;
+  };
+
+  Widget.prototype.renderScoringRules = function () {
+    if (!this.scoringBody) return;
+    var fmt = this.format;
+    var groups = [
+      [
+        "Passing",
+        [
+          ["Yards", "0.04 / yd"],
+          ["Touchdown", "4"],
+          ["Interception", "−1"],
+          ["2-pt conversion", "2"],
+        ],
+      ],
+      [
+        "Rushing",
+        [
+          ["Yards", "0.1 / yd"],
+          ["Touchdown", "6"],
+          ["2-pt conversion", "2"],
+        ],
+      ],
+      [
+        "Receiving",
+        [
+          ["Reception", (RECEPTION_BY_FORMAT[fmt] || "1") + " / catch"],
+          ["Yards", "0.1 / yd"],
+          ["Touchdown", "6"],
+          ["2-pt conversion", "2"],
+        ],
+      ],
+      [
+        "Misc",
+        [
+          ["Fumble lost", "−2"],
+          ["Special-teams TD", "6"],
+        ],
+      ],
+    ];
+
+    var body = this.scoringBody;
+    body.innerHTML = "";
+
+    var head = el("div", "sdt-fpa__scoring-head");
+    head.appendChild(el("span", "sdt-fpa__scoring-title", "Scoring rules"));
+    head.appendChild(
+      el("span", "sdt-fpa__scoring-badge", FORMAT_LABEL[fmt] || fmt)
+    );
+    body.appendChild(head);
+
+    groups.forEach(function (g) {
+      var grp = el("div", "sdt-fpa__scoring-group");
+      grp.appendChild(el("div", "sdt-fpa__scoring-group-label", g[0]));
+      g[1].forEach(function (item) {
+        var isReception = item[0] === "Reception";
+        var row = el(
+          "div",
+          "sdt-fpa__scoring-row" + (isReception ? " is-reception" : "")
+        );
+        row.appendChild(el("span", "sdt-fpa__scoring-key", item[0]));
+        row.appendChild(el("span", "sdt-fpa__scoring-val", item[1]));
+        grp.appendChild(row);
+      });
+      body.appendChild(grp);
+    });
+
+    body.appendChild(
+      el(
+        "div",
+        "sdt-fpa__scoring-note",
+        "Only the per-reception value changes with the selected scoring format."
+      )
+    );
   };
 
   Widget.prototype.renderError = function () {
@@ -252,27 +416,49 @@
     this.notice.appendChild(strong);
     this.notice.appendChild(rest);
 
+    var self = this;
     var rows = data.rows.slice();
     var offRanks = rankByValueDesc(rows, "offFpa");
 
-    // Default sort: easiest overall defense first (highest OFF FPA).
-    rows.sort(function (a, b) {
-      return b.offFpa - a.offFpa;
-    });
+    this.sortRows(rows);
 
     var table = el("table", "sdt-fpa__table");
     var thead = el("thead");
     var htr = el("tr");
-    htr.appendChild(el("th", "sdt-fpa__th sdt-fpa__th--team", "Team"));
+
+    var columns = [{ key: "team", label: "Team", cls: "sdt-fpa__th--team" }];
     POSITIONS.forEach(function (p) {
-      htr.appendChild(
-        el(
-          "th",
-          "sdt-fpa__th sdt-fpa__th--num" + (p.key === "off" ? " is-off" : ""),
-          p.label + " " + (data.view === "adjusted" ? "aFPA" : "FPA")
-        )
-      );
+      columns.push({
+        key: p.key,
+        label: p.label + " " + (data.view === "adjusted" ? "aFPA" : "FPA"),
+        cls: "sdt-fpa__th--num" + (p.key === "off" ? " is-off" : ""),
+      });
     });
+
+    columns.forEach(function (col) {
+      var th = el("th", "sdt-fpa__th sdt-fpa__th--sortable " + col.cls);
+      th.appendChild(el("span", "sdt-fpa__th-label", col.label));
+      var ind = el("span", "sdt-fpa__sort-ind");
+      if (self.sortKey === col.key) {
+        th.classList.add(
+          self.sortDir === "asc" ? "is-sorted-asc" : "is-sorted-desc"
+        );
+        ind.textContent = self.sortDir === "asc" ? "▲" : "▼";
+        th.setAttribute(
+          "aria-sort",
+          self.sortDir === "asc" ? "ascending" : "descending"
+        );
+      } else {
+        ind.textContent = "↕";
+        th.setAttribute("aria-sort", "none");
+      }
+      th.appendChild(ind);
+      th.addEventListener("click", function () {
+        self.onSort(col.key);
+      });
+      htr.appendChild(th);
+    });
+
     thead.appendChild(htr);
     table.appendChild(thead);
 
@@ -306,6 +492,28 @@
     table.appendChild(tbody);
 
     this.mount.appendChild(table);
+  };
+
+  Widget.prototype.sortRows = function (rows) {
+    var key = this.sortKey;
+    var mult = this.sortDir === "asc" ? 1 : -1;
+    rows.sort(function (a, b) {
+      if (key === "team") {
+        return mult * String(a.team).localeCompare(String(b.team));
+      }
+      return mult * (Number(a[key + "Fpa"]) - Number(b[key + "Fpa"]));
+    });
+  };
+
+  Widget.prototype.onSort = function (key) {
+    if (this.sortKey === key) {
+      this.sortDir = this.sortDir === "asc" ? "desc" : "asc";
+    } else {
+      this.sortKey = key;
+      // Names read best A→Z; FPA columns lead with the highest (easiest) first.
+      this.sortDir = key === "team" ? "asc" : "desc";
+    }
+    this.renderTable();
   };
 
   Widget.prototype.downloadCsv = function () {

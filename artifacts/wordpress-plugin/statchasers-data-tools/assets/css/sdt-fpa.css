@@ -106,17 +106,18 @@
 .sdt-fpa__csv {
   appearance: none;
   cursor: pointer;
-  border: 0;
+  border: 1px solid var(--sdt-navy);
   border-radius: 10px;
-  background: var(--sdt-gold);
-  color: #111827;
+  background: #fff;
+  color: var(--sdt-navy);
   font-size: 12px;
   font-weight: 800;
   padding: 8px 14px;
 }
 
 .sdt-fpa__csv:hover {
-  filter: brightness(0.97);
+  background: #fff;
+  border-color: var(--sdt-navy);
 }
 
 /* ── Notice (StatChasers blue) ─────────────────────────────────────────────── */
@@ -148,6 +149,144 @@
   color: var(--sdt-muted);
 }
 
+/* ── Metric explainers + scoring settings ──────────────────────────────────── */
+
+.sdt-fpa__explainers {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sdt-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sdt-fpa__explain-toggle {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 2px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sdt-blue);
+  transition: color 0.12s ease;
+}
+
+.sdt-fpa__explain-toggle:hover {
+  color: var(--sdt-navy);
+}
+
+.sdt-fpa__explain-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sdt-fpa__explain-caret {
+  font-size: 10px;
+  opacity: 0.7;
+  transition: transform 0.15s ease;
+}
+
+.sdt-fpa__explain.is-open .sdt-fpa__explain-caret {
+  transform: rotate(180deg);
+}
+
+.sdt-fpa__explain-body {
+  margin: 6px 0 2px;
+  max-width: 60ch;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--sdt-muted);
+}
+
+/* Scoring settings panel */
+
+.sdt-fpa__scoring-body {
+  margin-top: 8px;
+  max-width: 320px;
+  border: 1px solid var(--sdt-border);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.sdt-fpa__scoring-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--sdt-border);
+}
+
+.sdt-fpa__scoring-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sdt-navy);
+}
+
+.sdt-fpa__scoring-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8a6d00;
+  background: rgba(244, 196, 48, 0.18);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.sdt-fpa__scoring-group {
+  padding: 8px 12px;
+}
+
+.sdt-fpa__scoring-group + .sdt-fpa__scoring-group {
+  border-top: 1px solid #f0f2f6;
+}
+
+.sdt-fpa__scoring-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sdt-muted);
+  margin-bottom: 4px;
+}
+
+.sdt-fpa__scoring-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.sdt-fpa__scoring-key {
+  color: var(--sdt-muted);
+}
+
+.sdt-fpa__scoring-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--sdt-navy);
+}
+
+.sdt-fpa__scoring-row.is-reception .sdt-fpa__scoring-key,
+.sdt-fpa__scoring-row.is-reception .sdt-fpa__scoring-val {
+  color: #8a6d00;
+  font-weight: 700;
+}
+
+.sdt-fpa__scoring-note {
+  padding: 8px 12px;
+  border-top: 1px solid var(--sdt-border);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--sdt-muted);
+}
+
 /* ── Table ─────────────────────────────────────────────────────────────────── */
 
 .sdt-fpa__table-wrap {
@@ -164,6 +303,12 @@
   font-size: 14px;
 }
 
+/* Scoped with .sdt-fpa to outrank theme `th` color rules (keeps text white). */
+.sdt-fpa .sdt-fpa__th,
+.sdt-fpa .sdt-fpa__th-label {
+  color: #fff;
+}
+
 .sdt-fpa__th {
   background: linear-gradient(90deg, #0b1f3a, #132a4a);
   color: #fff;
@@ -178,6 +323,30 @@
 
 .sdt-fpa__th--team {
   text-align: left;
+}
+
+/* ── Sortable headers ──────────────────────────────────────────────────────── */
+
+.sdt-fpa__th--sortable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sdt-fpa__th--sortable:hover {
+  background: linear-gradient(90deg, #132a4a, #1c3c66);
+}
+
+.sdt-fpa__sort-ind {
+  margin-left: 5px;
+  font-size: 9px;
+  opacity: 0.5;
+}
+
+.sdt-fpa .sdt-fpa__th.is-sorted-asc .sdt-fpa__sort-ind,
+.sdt-fpa .sdt-fpa__th.is-sorted-desc .sdt-fpa__sort-ind {
+  opacity: 1;
+  color: var(--sdt-gold);
 }
 
 .sdt-fpa__th.is-off,

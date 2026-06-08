@@ -452,7 +452,7 @@ export default function FpaPage() {
               <div className="sc-fpa-csv-wrap ml-auto hidden md:block">
                 <Button
                   onClick={handleDownloadCsv}
-                  className="sc-fpa-download-btn h-8 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                  className="sc-fpa-download-btn h-8 shrink-0 gap-1.5 rounded-lg border border-foreground bg-background px-3 text-xs font-semibold text-foreground hover:bg-background hover:text-foreground"
                   data-testid="button-download-csv"
                 >
                   <Download className="h-3.5 w-3.5" />
