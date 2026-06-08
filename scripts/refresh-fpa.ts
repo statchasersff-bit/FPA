@@ -218,8 +218,11 @@ function scoreRow(get: (col: string) => string | undefined): Record<ScoringForma
     (g("passing_2pt_conversions") +
       g("rushing_2pt_conversions") +
       g("receiving_2pt_conversions")) *
-      2 +
-    g("special_teams_tds") * 6;
+      2;
+  // NOTE: special_teams_tds (punt/kick return TDs) are intentionally excluded.
+  // FPA measures offensive production a defense allows; a return TD is a
+  // special-teams play the defense had no part in. Keep in sync with
+  // artifacts/api-server/src/lib/nflverse.ts.
 
   const receptions = g("receptions");
 
@@ -278,7 +281,12 @@ async function fetchScoredWeeklyStats(season: number): Promise<ScoredPlayerWeek[
     const cells = matrix[r];
     if (cells.length !== header.length) continue;
 
-    const position = cells[colIndex.get("position")!];
+    // nflverse lists fullbacks as "FB", but fantasy sites bucket fullback
+    // production into RB (matching the CSV's own `position_group`). Remap
+    // FB -> RB before filtering so RB FPA includes FB snaps. Keep in sync with
+    // artifacts/api-server/src/lib/nflverse.ts.
+    const rawPosition = cells[colIndex.get("position")!];
+    const position = rawPosition === "FB" ? "RB" : rawPosition;
     if (!FANTASY_POSITION_SET.has(position)) continue;
 
     if (cells[colIndex.get("season_type")!] !== seasonType) continue;

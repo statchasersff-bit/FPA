@@ -163,8 +163,10 @@ export function scoreRow(get: (col: string) => string | undefined): {
     (g("passing_2pt_conversions") +
       g("rushing_2pt_conversions") +
       g("receiving_2pt_conversions")) *
-      2 +
-    g("special_teams_tds") * 6;
+      2;
+  // NOTE: special_teams_tds (punt/kick return TDs) are intentionally excluded.
+  // FPA measures offensive production a defense allows; a return TD is a
+  // special-teams play the defense had no part in, so it must not count.
 
   const receptions = g("receptions");
 
@@ -263,7 +265,11 @@ export async function fetchScoredWeeklyStats(
     const cells = matrix[r];
     if (cells.length !== header.length) continue; // skip malformed rows
 
-    const position = cells[colIndex.get("position")!];
+    // nflverse lists fullbacks as "FB", but fantasy sites bucket fullback
+    // production into RB (matching the CSV's own `position_group`). Remap
+    // FB -> RB before filtering so RB FPA includes FB snaps.
+    const rawPosition = cells[colIndex.get("position")!];
+    const position = rawPosition === "FB" ? "RB" : rawPosition;
     if (!FANTASY_POSITION_SET.has(position)) continue;
 
     const rowSeasonType = cells[colIndex.get("season_type")!];
