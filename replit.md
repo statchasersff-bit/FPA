@@ -11,6 +11,9 @@ Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run ingest-fpa` — ingest FPA from nflverse into Postgres (append `-- --baseline 2025 --current 2026` to override seasons)
+- `pnpm run refresh:plugin` — regenerate the WordPress plugin's bundled FPA data (from nflverse) **and** rebuild the plugin zip, ready to re-upload
+- `pnpm run refresh:fpa` — regenerate only the bundled data file (`artifacts/wordpress-plugin/statchasers-data-tools/data/fpa-data.json`)
+- `pnpm run build:plugin` — rebuild only the plugin zip (use after hand-editing the bundled data file)
 - Required env: `DATABASE_URL` — Postgres connection string
 - Optional env: `FPA_BASELINE_SEASON` (default 2025), `FPA_CURRENT_SEASON` (default 2026)
 - Optional env: `FPA_ADMIN_SECRET` — shared secret guarding `POST /api/admin/fpa/refresh`; must match the WordPress plugin's "Replit Admin Secret" setting. Refresh is disabled (503) until set.
@@ -35,7 +38,9 @@ Fantasy football analytics platform. The FPA (Fantasy Points Allowed) page helps
 - `artifacts/api-server/src/routes/nfl/fpa.ts` — FPA route handlers + data mode logic
 - `artifacts/api-server/src/routes/admin/fpa.ts` — admin-secret-guarded `POST /api/admin/fpa/refresh` that triggers `ingestFpa()`
 - `artifacts/statchasers/src/` — React frontend
-- `artifacts/wordpress-plugin/statchasers-data-tools/` — "StatChasers Data Tools" WP plugin: admin refresh button, cached public REST endpoint (`/wp-json/statchasers/v1/fpa`), and `[statchasers_fpa]` frontend shortcode. WordPress is the control panel/cache/display; Replit stays the data engine.
+- `artifacts/wordpress-plugin/statchasers-data-tools/` — "StatChasers Data Tools" WP plugin: read-only admin dashboard, public REST endpoint (`/wp-json/statchasers/v1/fpa`), and `[statchasers_fpa]` frontend shortcode. The FPA snapshot ships **bundled inside the plugin** at `data/fpa-data.json`; WordPress only reads and displays it. To update: regenerate/edit that file, rebuild the zip (`pnpm run build:plugin`), and re-upload the plugin.
+- `scripts/refresh-fpa.ts` — DB-free nflverse → FPA snapshot generator; writes `data/fpa-data.json` into the plugin.
+- `scripts/build-plugin-zip.mjs` — packages the plugin folder into `statchasers-data-tools.zip` (pure Node, no `zip` binary needed).
 
 ## Architecture decisions
 

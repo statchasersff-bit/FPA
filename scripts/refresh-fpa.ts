@@ -1,7 +1,8 @@
 /**
- * Fantasy Points Allowed refresh — standalone, DB-free, CI-friendly.
+ * Fantasy Points Allowed snapshot generator — standalone, DB-free.
  *
- * Designed to run from GitHub Actions (see .github/workflows/refresh-fpa.yml):
+ * Regenerates the data snapshot that ships INSIDE the WordPress plugin
+ * (artifacts/wordpress-plugin/statchasers-data-tools/data/fpa-data.json):
  *
  *   1. Fetch the weekly player stats CSV published by nflverse.
  *   2. Score every QB/RB/WR/TE player-week in Standard / Half-PPR / PPR.
@@ -9,30 +10,30 @@
  *      FPA (aFPA), blending the 2025 baseline with live current-season data once
  *      the season is under way.
  *   4. Build the six {format × view} combos the frontend consumes.
- *   5. POST the resulting JSON to the WordPress sync endpoint with a bearer token.
+ *   5. Write the resulting JSON to the plugin's bundled data file.
+ *
+ * After running this, rebuild the plugin zip and re-upload it in WordPress —
+ * the plugin reads this file directly; there is no push/sync endpoint.
  *
  * The computation here is a faithful, dependency-free port of the api-server
  * pipeline (artifacts/api-server/src/lib/{nflverse,fpa-ingest}.ts and
  * routes/nfl/fpa.ts). It deliberately avoids Postgres and any @workspace/*
- * import so it can run anywhere Node + tsx is available — no Replit required.
+ * import so it can run anywhere Node + tsx is available.
  *
  * Environment:
- *   STATCHASERS_FPA_SYNC_URL    WordPress sync endpoint
- *                               (e.g. https://statchasers.com/wp-json/statchasers/v1/fpa/sync)
- *   STATCHASERS_FPA_SYNC_TOKEN  Bearer token; must match the plugin's "FPA Sync Token".
  *   FPA_CURRENT_SEASON          Optional override (default 2026).
  *   FPA_BASELINE_SEASON         Optional override (default 2025).
- *   FPA_OUTPUT_FILE             Optional path to also write the JSON locally
- *                               (default: fpa-latest.json in the working dir).
- *   FPA_DRY_RUN                 If "1"/"true", compute + write the file but skip the POST.
+ *   FPA_OUTPUT_FILE             Optional output path
+ *                               (default: the plugin's data/fpa-data.json).
  */
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const CURRENT_SEASON = Number(process.env.FPA_CURRENT_SEASON ?? 2026);
 const BASELINE_SEASON = Number(process.env.FPA_BASELINE_SEASON ?? 2025);
-const OUTPUT_FILE = process.env.FPA_OUTPUT_FILE ?? "fpa-latest.json";
-const DRY_RUN = /^(1|true)$/i.test(process.env.FPA_DRY_RUN ?? "");
+const DEFAULT_OUTPUT_FILE =
+  "artifacts/wordpress-plugin/statchasers-data-tools/data/fpa-data.json";
+const OUTPUT_FILE = process.env.FPA_OUTPUT_FILE ?? DEFAULT_OUTPUT_FILE;
 
 const ROLLING_WINDOW_WEEKS = 10;
 // Preseason baseline mirrors industry "Weeks 1–17" tables — Week 18 excluded.
@@ -690,51 +691,19 @@ async function buildPayload(): Promise<SyncPayload> {
   };
 }
 
-async function postToWordPress(payload: SyncPayload): Promise<void> {
-  const url = process.env.STATCHASERS_FPA_SYNC_URL;
-  const token = process.env.STATCHASERS_FPA_SYNC_TOKEN;
-
-  if (!url || !token) {
-    throw new Error(
-      "STATCHASERS_FPA_SYNC_URL and STATCHASERS_FPA_SYNC_TOKEN must both be set to POST to WordPress.",
-    );
-  }
-
-  log(`POST ${url} (${payload.teamCount} teams, ${Object.keys(payload.combos).length} combos)`);
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`WordPress sync failed: HTTP ${res.status} — ${text.slice(0, 500)}`);
-  }
-  log(`WordPress sync OK: HTTP ${res.status} — ${text.slice(0, 300)}`);
-}
-
 async function main(): Promise<void> {
   const payload = await buildPayload();
 
-  // Always persist the JSON locally so the workflow can upload it as an artifact.
-  const { writeFile } = await import("node:fs/promises");
+  // Write the snapshot into the plugin's bundled data file.
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  const { dirname } = await import("node:path");
+  await mkdir(dirname(OUTPUT_FILE), { recursive: true });
   await writeFile(OUTPUT_FILE, JSON.stringify(payload, null, 2), "utf8");
   log(
     `wrote ${OUTPUT_FILE} — mode "${payload.dataMode}", ${payload.teamCount} teams, ` +
       `preseason=${payload.isPreseason}`,
   );
-
-  if (DRY_RUN) {
-    log("FPA_DRY_RUN set — skipping POST to WordPress.");
-    return;
-  }
-
-  await postToWordPress(payload);
+  log("Rebuild the plugin zip and re-upload it in WordPress to publish this data.");
 }
 
 main().catch((err) => {

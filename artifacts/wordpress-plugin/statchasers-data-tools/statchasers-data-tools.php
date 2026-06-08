@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       StatChasers Data Tools
- * Description:        Cache layer and frontend display for StatChasers analytics. Receives Fantasy Points Allowed data pushed from a scheduled GitHub Actions refresh and serves a cached, branded frontend table.
- * Version:           1.0.4
+ * Description:        Frontend display for StatChasers analytics. Renders a branded Fantasy Points Allowed table from a data snapshot bundled inside the plugin.
+ * Version:           1.1.0
  * Author:            StatChasers
  * Requires at least: 6.0
  * Requires PHP:      7.4
@@ -10,30 +10,29 @@
  * Text Domain:       statchasers-data-tools
  *
  * Architecture:
- *   - GitHub Actions = data engine. A scheduled job (every 3 days) computes
- *     FPA/aFPA from nflverse and POSTs the latest JSON to this plugin's
- *     /fpa/sync endpoint. (See scripts/refresh-fpa.ts in the repo.)
- *   - WordPress = cache layer (stores the latest pushed JSON) and frontend
- *     display layer ([statchasers_fpa]).
- *
- *   The FPA sync token lives ONLY in WordPress options + the server-side REST
- *   permission check. It is never enqueued or exposed to frontend JavaScript.
+ *   - The FPA snapshot ships INSIDE the plugin at data/fpa-data.json. To update
+ *     the numbers, edit/regenerate that file in the repo, rebuild the plugin
+ *     zip, and re-upload it in WordPress. (See scripts/refresh-fpa.ts, which
+ *     regenerates data/fpa-data.json from nflverse.)
+ *   - WordPress = read-only display layer ([statchasers_fpa] + public endpoint).
+ *     There is no push/sync endpoint and nothing is fetched at runtime.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'SDT_VERSION', '1.0.4' );
+define( 'SDT_VERSION', '1.1.0' );
 define( 'SDT_FILE', __FILE__ );
 define( 'SDT_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SDT_URL', plugin_dir_url( __FILE__ ) );
 define( 'SDT_REST_NAMESPACE', 'statchasers/v1' );
 
+// Bundled data snapshot — the single source of truth for the FPA table.
+define( 'SDT_DATA_FILE', SDT_DIR . 'data/fpa-data.json' );
+
 // Option keys.
 define( 'SDT_OPT_SETTINGS', 'sdt_settings' );
-define( 'SDT_OPT_CACHE', 'sdt_fpa_cache' );
-define( 'SDT_OPT_STATUS', 'sdt_fpa_status' );
 
 require_once SDT_DIR . 'includes/class-sdt-settings.php';
 require_once SDT_DIR . 'includes/class-sdt-store.php';

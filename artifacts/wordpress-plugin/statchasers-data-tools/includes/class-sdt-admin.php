@@ -71,8 +71,8 @@ class SDT_Admin {
 			return;
 		}
 
-		// Data is pushed in by GitHub Actions, so the admin screens are read-only
-		// status views — only the stylesheet is needed (no refresh JS, no token).
+		// Data ships inside the plugin, so the admin screens are read-only status
+		// views — only the stylesheet is needed (no refresh JS, no token).
 		wp_enqueue_style(
 			'sdt-admin',
 			SDT_URL . 'assets/css/sdt-admin.css',
@@ -101,17 +101,10 @@ class SDT_Admin {
 			return;
 		}
 
-		$status     = SDT_Store::get_status();
-		$configured = SDT_Settings::is_configured();
-		$settings   = SDT_Settings::all();
+		$status   = SDT_Store::get_status();
+		$settings = SDT_Settings::all();
 
-		$status_labels = array(
-			'never'   => __( 'Never refreshed', 'statchasers-data-tools' ),
-			'success' => __( 'Success', 'statchasers-data-tools' ),
-			'error'   => __( 'Error', 'statchasers-data-tools' ),
-		);
-		$status_key   = isset( $status['last_refresh_status'] ) ? $status['last_refresh_status'] : 'never';
-		$status_label = isset( $status_labels[ $status_key ] ) ? $status_labels[ $status_key ] : $status_key;
+		$has_data = ! empty( $status['has_data'] );
 
 		$last_updated = (int) $status['last_updated']
 			? sprintf(
@@ -126,23 +119,17 @@ class SDT_Admin {
 		<div class="wrap sdt-admin-wrap">
 			<h1><?php esc_html_e( 'Fantasy Points Allowed', 'statchasers-data-tools' ); ?></h1>
 
-			<?php if ( ! $configured ) : ?>
+			<?php if ( ! $has_data ) : ?>
 				<div class="notice notice-warning">
 					<p>
-						<?php
-						printf(
-							/* translators: %s: settings page URL. */
-							wp_kses_post( __( 'No FPA Sync Token is set yet. <a href="%s">Open settings</a> and add a token that matches the GitHub secret <code>STATCHASERS_FPA_SYNC_TOKEN</code> so the scheduled refresh can push data.', 'statchasers-data-tools' ) ),
-							esc_url( admin_url( 'admin.php?page=' . self::SETTINGS_SLUG ) )
-						);
-						?>
+						<?php esc_html_e( 'No FPA data is bundled with this plugin build. Add data/fpa-data.json to the plugin and re-upload it.', 'statchasers-data-tools' ); ?>
 					</p>
 				</div>
 			<?php endif; ?>
 
 			<div class="notice notice-info inline">
 				<p>
-					<?php esc_html_e( 'Data is refreshed automatically by a GitHub Actions job every 3 days, which computes the latest numbers from nflverse and pushes them to this site. There is no manual refresh button — to force an update, run the "Refresh FPA" workflow in GitHub (workflow_dispatch).', 'statchasers-data-tools' ); ?>
+					<?php esc_html_e( 'The FPA numbers ship inside this plugin (data/fpa-data.json). To update them, regenerate or edit that file in the repo, rebuild the plugin zip, and re-upload it here. Nothing is fetched at runtime.', 'statchasers-data-tools' ); ?>
 				</p>
 			</div>
 
@@ -158,7 +145,7 @@ class SDT_Admin {
 							<td data-field="data_mode"><?php echo esc_html( $status['data_mode'] ? $status['data_mode'] : '—' ); ?></td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Last updated', 'statchasers-data-tools' ); ?></th>
+							<th scope="row"><?php esc_html_e( 'Snapshot generated', 'statchasers-data-tools' ); ?></th>
 							<td data-field="last_updated"><?php echo esc_html( $last_updated ); ?></td>
 						</tr>
 						<tr>
@@ -174,9 +161,11 @@ class SDT_Admin {
 							<td data-field="team_count"><?php echo esc_html( $status['team_count'] ? $status['team_count'] : '—' ); ?></td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Last refresh status', 'statchasers-data-tools' ); ?></th>
-							<td data-field="last_refresh_status">
-								<span class="sdt-badge sdt-badge--<?php echo esc_attr( $status_key ); ?>"><?php echo esc_html( $status_label ); ?></span>
+							<th scope="row"><?php esc_html_e( 'Data status', 'statchasers-data-tools' ); ?></th>
+							<td data-field="data_status">
+								<span class="sdt-badge sdt-badge--<?php echo $has_data ? 'success' : 'error'; ?>">
+									<?php echo $has_data ? esc_html__( 'Bundled', 'statchasers-data-tools' ) : esc_html__( 'Missing', 'statchasers-data-tools' ); ?>
+								</span>
 								<?php if ( null !== $preseason ) : ?>
 									<span class="sdt-badge sdt-badge--info">
 										<?php echo $preseason ? esc_html__( 'Preseason', 'statchasers-data-tools' ) : esc_html__( 'In-Season', 'statchasers-data-tools' ); ?>
@@ -184,17 +173,13 @@ class SDT_Admin {
 								<?php endif; ?>
 							</td>
 						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Last error', 'statchasers-data-tools' ); ?></th>
-							<td data-field="last_error"><?php echo esc_html( $status['last_error'] ? $status['last_error'] : '—' ); ?></td>
-						</tr>
 					</tbody>
 				</table>
 			</div>
 
 			<div class="sdt-card">
 				<h2><?php esc_html_e( 'Frontend Shortcode', 'statchasers-data-tools' ); ?></h2>
-				<p><?php esc_html_e( 'Place this shortcode on any page or post to render the public Fantasy Points Allowed table. It reads from the WordPress cache — never from an external service.', 'statchasers-data-tools' ); ?></p>
+				<p><?php esc_html_e( 'Place this shortcode on any page or post to render the public Fantasy Points Allowed table. It reads from the data bundled inside the plugin — never from an external service.', 'statchasers-data-tools' ); ?></p>
 				<code class="sdt-shortcode">[statchasers_fpa]</code>
 			</div>
 		</div>
@@ -205,8 +190,7 @@ class SDT_Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		$settings  = SDT_Settings::all();
-		$has_token = ! empty( $settings['fpa_sync_token'] );
+		$settings = SDT_Settings::all();
 		?>
 		<div class="wrap sdt-admin-wrap">
 			<h1><?php esc_html_e( 'StatChasers Data — Settings', 'statchasers-data-tools' ); ?></h1>
@@ -214,23 +198,6 @@ class SDT_Admin {
 				<?php settings_fields( SDT_Settings::GROUP ); ?>
 				<table class="form-table" role="presentation">
 					<tbody>
-						<tr>
-							<th scope="row">
-								<label for="sdt_fpa_sync_token"><?php esc_html_e( 'FPA Sync Token', 'statchasers-data-tools' ); ?></label>
-							</th>
-							<td>
-								<input
-									type="password"
-									id="sdt_fpa_sync_token"
-									name="<?php echo esc_attr( SDT_OPT_SETTINGS ); ?>[fpa_sync_token]"
-									value=""
-									class="regular-text"
-									autocomplete="new-password"
-									placeholder="<?php echo $has_token ? esc_attr__( '•••••••• (saved — leave blank to keep)', 'statchasers-data-tools' ) : ''; ?>"
-								/>
-								<p class="description"><?php esc_html_e( 'Shared secret for the POST /wp-json/statchasers/v1/fpa/sync endpoint. Must match the GitHub Actions secret STATCHASERS_FPA_SYNC_TOKEN. Stored server-side only; never sent to the browser frontend.', 'statchasers-data-tools' ); ?></p>
-							</td>
-						</tr>
 						<tr>
 							<th scope="row">
 								<label for="sdt_default_season"><?php esc_html_e( 'Default Season', 'statchasers-data-tools' ); ?></label>

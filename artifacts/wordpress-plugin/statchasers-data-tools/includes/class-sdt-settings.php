@@ -31,7 +31,6 @@ class SDT_Settings {
 	 */
 	public static function defaults() {
 		return array(
-			'fpa_sync_token' => '',
 			'default_season' => 2026,
 			'default_format' => 'ppr',
 			'cache_duration' => 3600,   // seconds (used for public Cache-Control + staleness display).
@@ -62,16 +61,6 @@ class SDT_Settings {
 		return isset( $all[ $key ] ) ? $all[ $key ] : null;
 	}
 
-	/**
-	 * Whether the plugin can accept pushed data (i.e. a sync token is set).
-	 *
-	 * @return bool
-	 */
-	public static function is_configured() {
-		$all = self::all();
-		return ! empty( $all['fpa_sync_token'] );
-	}
-
 	public function register() {
 		register_setting(
 			self::GROUP,
@@ -92,15 +81,7 @@ class SDT_Settings {
 	 */
 	public function sanitize( $input ) {
 		$defaults = self::defaults();
-		$existing = self::all();
 		$out      = array();
-
-		// Allow leaving the token field blank to keep the stored value.
-		if ( isset( $input['fpa_sync_token'] ) && '' !== trim( $input['fpa_sync_token'] ) ) {
-			$out['fpa_sync_token'] = trim( wp_unslash( $input['fpa_sync_token'] ) );
-		} else {
-			$out['fpa_sync_token'] = $existing['fpa_sync_token'];
-		}
 
 		$season                 = isset( $input['default_season'] ) ? absint( $input['default_season'] ) : $defaults['default_season'];
 		$out['default_season']  = ( $season >= 2000 && $season <= 2100 ) ? $season : $defaults['default_season'];
