@@ -1,7 +1,20 @@
 /* StatChasers — Fantasy Points Allowed frontend table.
-   Self-contained, theme-agnostic, mobile-first. */
+   Self-contained, theme-agnostic, mobile-first.
 
-.sdt-fpa {
+   Rendered inside a Shadow DOM (see assets/js/sdt-fpa.js), so NO WordPress/Divi
+   global CSS reaches these rules — the widget is fully isolated. This same sheet
+   is also enqueued in the light DOM purely to warm the browser cache (so the
+   shadow-root <link> resolves instantly) and to style the pre-hydration loading
+   placeholder; its :host rule matches nothing there. */
+
+/* The shadow host itself (a light-DOM <div data-fpa-app>). Kept to a plain
+   block so Divi can't collapse or float it; all visual styling lives on the
+   .fpa-app-root wrapper inside the shadow root. */
+:host {
+  display: block;
+}
+
+.fpa-app-root {
   --sdt-gold: #f4c430;
   --sdt-navy: #0b1f3a;
   --sdt-blue: #20365a;
@@ -15,12 +28,37 @@
     Arial, sans-serif;
   font-size: 14px;
   line-height: 1.4;
-  max-width: 100%;
+
+  /* Stop mobile browsers (Android Chrome font-boosting / iOS text auto-sizing)
+     from inflating the table's text. Without this, the 32-row table is a prime
+     boosting target: cells get silently enlarged on a real phone, columns grow
+     past the frame, and the table scrolls sideways — a production-only, mobile-
+     only symptom that an isolated probe (which pins this) never reproduces. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  /* Full width of its column, but capped so it doesn't keep growing when the
+     desktop page is zoomed out / on ultra-wide viewports (mirrors the web
+     app's 1400px content cap). Centered once it hits the cap. */
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+
+  /* Tight 5px gutter on each side of the whole tool. */
+  padding-left: 5px;
+  padding-right: 5px;
+  box-sizing: border-box;
+
+  /* Responsive breakpoints below track the widget's OWN width, not the
+     browser viewport — so it lays out correctly no matter how wide the
+     column it's embedded in happens to be. */
+  container: fpa-app-root / inline-size;
 }
 
-.sdt-fpa__loading,
-.sdt-fpa__empty,
-.sdt-fpa__error {
+.fpa-app-root .fpa-app-loading,
+.fpa-app-root .fpa-app-empty,
+.fpa-app-root .fpa-app-error {
   padding: 24px;
   text-align: center;
   color: var(--sdt-muted);
@@ -29,7 +67,7 @@
   background: var(--sdt-card);
 }
 
-.sdt-fpa__error {
+.fpa-app-root .fpa-app-error {
   color: #b42318;
   border-color: #f3c0bb;
   background: #fef3f2;
@@ -37,29 +75,26 @@
 
 /* ── Control panel ─────────────────────────────────────────────────────────── */
 
-.sdt-fpa__panel {
-  border: 1px solid var(--sdt-border);
-  border-radius: 14px;
-  background: var(--sdt-card);
-  box-shadow: 0 4px 14px -8px rgba(11, 31, 58, 0.18);
-  padding: 14px;
+.fpa-app-root .fpa-app-panel {
+  /* No visual container around the controls/explainers/baseline — they sit
+     flush with no border, background, or shadow. */
   margin-bottom: 14px;
 }
 
-.sdt-fpa__controls {
+.fpa-app-root .fpa-app-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
 }
 
-.sdt-fpa__group {
+.fpa-app-root .fpa-app-group {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.sdt-fpa__label {
+.fpa-app-root .fpa-app-label {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -67,7 +102,7 @@
   color: var(--sdt-muted);
 }
 
-.sdt-fpa__segmented {
+.fpa-app-root .fpa-app-segmented {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
@@ -76,7 +111,7 @@
   border: 1px solid #edf0f4;
 }
 
-.sdt-fpa__chip {
+.fpa-app-root .fpa-app-chip {
   appearance: none;
   cursor: pointer;
   border: 0;
@@ -89,46 +124,187 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.sdt-fpa__chip:hover {
+.fpa-app-root .fpa-app-chip:hover {
   color: var(--sdt-navy);
 }
 
-.sdt-fpa__chip.is-active {
+.fpa-app-root .fpa-app-chip.fpa-app-is-active {
   background: var(--sdt-gold);
   color: #111827;
   box-shadow: 0 2px 6px rgba(248, 189, 24, 0.28);
 }
 
-.sdt-fpa__csv-wrap {
+.fpa-app-root .fpa-app-csv-wrap {
   margin-left: auto;
 }
 
-.sdt-fpa__csv {
+/* Inline SVG icons — inherit text color, sized consistently across themes. */
+.fpa-app-root .fpa-app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.fpa-app-root .fpa-app-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.fpa-app-root .fpa-app-icon--sm svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Secondary "Export CSV" — a quiet data-tool action, not a primary control. */
+.fpa-app-root .fpa-app-csv {
   appearance: none;
   cursor: pointer;
-  border: 1px solid var(--sdt-navy);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--sdt-border);
   border-radius: 10px;
+  background: transparent;
+  color: var(--sdt-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+}
+
+.fpa-app-root .fpa-app-csv:hover {
+  background: transparent;
+  border-color: var(--sdt-border);
+  color: var(--sdt-navy);
+}
+
+/* ── Model status + utility strip (control-panel row 2) ────────────────────── */
+
+.fpa-app-root .fpa-app-meta {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--sdt-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.fpa-app-root .fpa-app-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Mobile-only copy of the status (shown above the table on small widths). */
+.fpa-app-root .fpa-app-status--mobile {
+  display: none;
+}
+
+.fpa-app-root .fpa-app-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+
+.fpa-app-root .fpa-app-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #10b981;
+}
+
+.fpa-app-root .fpa-app-meta-label {
+  font-size: 11px;
+  color: var(--sdt-muted);
+}
+
+.fpa-app-root .fpa-app-meta-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fpa-app-root .fpa-app-util-btn {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--sdt-border);
   background: #fff;
   color: var(--sdt-navy);
   font-size: 12px;
-  font-weight: 800;
-  padding: 8px 14px;
+  font-weight: 700;
 }
 
-.sdt-fpa__csv:hover {
-  background: #fff;
-  border-color: var(--sdt-navy);
+.fpa-app-root .fpa-app-util-btn:hover {
+  border-color: rgba(32, 54, 90, 0.4);
+  color: var(--sdt-blue);
+}
+
+.fpa-app-root .fpa-app-util-caret {
+  opacity: 0.55;
+}
+
+.fpa-app-root .fpa-app-util-caret svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Small info icon next to a control label (e.g. "View"). */
+.fpa-app-root .fpa-app-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fpa-app-root .fpa-app-label-info {
+  color: var(--sdt-muted);
+  cursor: help;
+}
+
+.fpa-app-root .fpa-app-label-info svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Methodology section titles + body text inside the popover. */
+.fpa-app-root .fpa-app-meth-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--sdt-navy);
+  margin-bottom: 3px;
+}
+
+.fpa-app-root .fpa-app-meth-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--sdt-muted);
 }
 
 /* ── Preseason baseline (collapsible) ──────────────────────────────────────── */
 
-.sdt-fpa__baseline {
+.fpa-app-root .fpa-app-baseline {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--sdt-border);
 }
 
-.sdt-fpa__baseline-dot {
+.fpa-app-root .fpa-app-baseline-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
@@ -136,7 +312,7 @@
   background: var(--sdt-blue);
 }
 
-.sdt-fpa__baseline-body {
+.fpa-app-root .fpa-app-baseline-body {
   margin: 8px 0 2px;
   max-width: 60ch;
   display: flex;
@@ -144,14 +320,14 @@
   gap: 10px;
 }
 
-.sdt-fpa__baseline-intro {
+.fpa-app-root .fpa-app-baseline-intro {
   margin: 0;
   font-size: 12px;
   line-height: 1.55;
   color: var(--sdt-muted);
 }
 
-.sdt-fpa__baseline-list {
+.fpa-app-root .fpa-app-baseline-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -159,13 +335,13 @@
   gap: 8px;
 }
 
-@media (min-width: 480px) {
-  .sdt-fpa__baseline-list {
+@container fpa-app-root (min-width: 480px) {
+  .fpa-app-root .fpa-app-baseline-list {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-.sdt-fpa__baseline-item {
+.fpa-app-root .fpa-app-baseline-item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -174,7 +350,7 @@
   color: var(--sdt-muted);
 }
 
-.sdt-fpa__baseline-bullet {
+.fpa-app-root .fpa-app-baseline-bullet {
   flex: 0 0 auto;
   margin-top: 5px;
   width: 6px;
@@ -183,21 +359,21 @@
   background: rgba(244, 196, 48, 0.6);
 }
 
-.sdt-fpa__baseline-key {
+.fpa-app-root .fpa-app-baseline-key {
   font-weight: 700;
   color: var(--sdt-navy);
 }
 
 /* ── Footer methodology line ───────────────────────────────────────────────── */
 
-.sdt-fpa__methodology {
+.fpa-app-root .fpa-app-methodology {
   margin: 10px 0 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--sdt-muted);
 }
 
-.sdt-fpa__methodology-label {
+.fpa-app-root .fpa-app-methodology-label {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -206,7 +382,7 @@
 
 /* ── Metric explainers + scoring settings ──────────────────────────────────── */
 
-.sdt-fpa__explainers {
+.fpa-app-root .fpa-app-explainers {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--sdt-border);
@@ -215,7 +391,7 @@
   gap: 6px;
 }
 
-.sdt-fpa__explain-toggle {
+.fpa-app-root .fpa-app-explain-toggle {
   appearance: none;
   cursor: pointer;
   border: 0;
@@ -230,26 +406,26 @@
   transition: color 0.12s ease;
 }
 
-.sdt-fpa__explain-toggle:hover {
+.fpa-app-root .fpa-app-explain-toggle:hover {
   color: var(--sdt-navy);
 }
 
-.sdt-fpa__explain-icon {
+.fpa-app-root .fpa-app-explain-icon {
   font-size: 12px;
   line-height: 1;
 }
 
-.sdt-fpa__explain-caret {
+.fpa-app-root .fpa-app-explain-caret {
   font-size: 10px;
   opacity: 0.7;
   transition: transform 0.15s ease;
 }
 
-.sdt-fpa__explain.is-open .sdt-fpa__explain-caret {
+.fpa-app-root .fpa-app-explain.fpa-app-is-open .fpa-app-explain-caret {
   transform: rotate(180deg);
 }
 
-.sdt-fpa__explain-body {
+.fpa-app-root .fpa-app-explain-body {
   margin: 6px 0 2px;
   max-width: 60ch;
   font-size: 12px;
@@ -259,11 +435,11 @@
 
 /* Scoring settings — floats as a popover so it never pushes the table down */
 
-.sdt-fpa__scoring {
+.fpa-app-root .fpa-app-scoring {
   position: relative;
 }
 
-.sdt-fpa__scoring-body {
+.fpa-app-root .fpa-app-scoring-body {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -278,7 +454,14 @@
   box-shadow: 0 12px 32px rgba(11, 31, 58, 0.18);
 }
 
-.sdt-fpa__scoring-head {
+/* Popovers on the right of the meta strip open aligned to their right edge so
+   they don't overflow the container. */
+.fpa-app-root .fpa-app-pop--end .fpa-app-scoring-body {
+  left: auto;
+  right: 0;
+}
+
+.fpa-app-root .fpa-app-scoring-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -286,7 +469,7 @@
   border-bottom: 1px solid var(--sdt-border);
 }
 
-.sdt-fpa__scoring-title {
+.fpa-app-root .fpa-app-scoring-title {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -294,7 +477,7 @@
   color: var(--sdt-navy);
 }
 
-.sdt-fpa__scoring-badge {
+.fpa-app-root .fpa-app-scoring-badge {
   font-size: 10px;
   font-weight: 700;
   color: #8a6d00;
@@ -303,15 +486,15 @@
   padding: 2px 8px;
 }
 
-.sdt-fpa__scoring-group {
+.fpa-app-root .fpa-app-scoring-group {
   padding: 8px 12px;
 }
 
-.sdt-fpa__scoring-group + .sdt-fpa__scoring-group {
+.fpa-app-root .fpa-app-scoring-group + .fpa-app-scoring-group {
   border-top: 1px solid #f0f2f6;
 }
 
-.sdt-fpa__scoring-group-label {
+.fpa-app-root .fpa-app-scoring-group-label {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -320,7 +503,7 @@
   margin-bottom: 4px;
 }
 
-.sdt-fpa__scoring-row {
+.fpa-app-root .fpa-app-scoring-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -328,23 +511,23 @@
   padding: 2px 0;
 }
 
-.sdt-fpa__scoring-key {
+.fpa-app-root .fpa-app-scoring-key {
   color: var(--sdt-muted);
 }
 
-.sdt-fpa__scoring-val {
+.fpa-app-root .fpa-app-scoring-val {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--sdt-navy);
 }
 
-.sdt-fpa__scoring-row.is-reception .sdt-fpa__scoring-key,
-.sdt-fpa__scoring-row.is-reception .sdt-fpa__scoring-val {
+.fpa-app-root .fpa-app-scoring-row.fpa-app-is-reception .fpa-app-scoring-key,
+.fpa-app-root .fpa-app-scoring-row.fpa-app-is-reception .fpa-app-scoring-val {
   color: #8a6d00;
   font-weight: 700;
 }
 
-.sdt-fpa__scoring-note {
+.fpa-app-root .fpa-app-scoring-note {
   padding: 8px 12px;
   border-top: 1px solid var(--sdt-border);
   font-size: 10px;
@@ -354,114 +537,140 @@
 
 /* ── Table ─────────────────────────────────────────────────────────────────── */
 
-.sdt-fpa__table-wrap {
-  border: 1px solid var(--sdt-border);
-  border-radius: 14px;
-  background: var(--sdt-card);
-  overflow: hidden;
-  box-shadow: 0 6px 18px -10px rgba(11, 31, 58, 0.25);
+.fpa-app-root .fpa-app-table-wrap {
+  /* No visual container around the table — it's just an invisible scroll
+     region so a too-wide table can scroll sideways (esp. on mobile) instead
+     of being clipped. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-.sdt-fpa__table {
+.fpa-app-root .fpa-app-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  border: 1px solid var(--sdt-border);
 }
 
-/* Scoped with .sdt-fpa to outrank theme `th` color rules (keeps text white). */
-.sdt-fpa .sdt-fpa__th,
-.sdt-fpa .sdt-fpa__th-label {
+/* Scoped with .fpa-app-root to outrank theme `th` color rules (keeps text white). */
+.fpa-app-root .fpa-app-th,
+.fpa-app-root .fpa-app-th-label {
   color: #fff;
 }
 
-.sdt-fpa__th {
+.fpa-app-root .fpa-app-th {
   background: linear-gradient(90deg, #0b1f3a, #132a4a);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 12px;
+  padding: 8px 8px;
   text-align: right;
   white-space: nowrap;
 }
 
-.sdt-fpa__th--team {
+.fpa-app-root .fpa-app-th--team {
   text-align: left;
+  /* Extra breathing room so the Team name doesn't crowd the QB column. */
+  padding-right: 24px;
+}
+
+/* Metric suffix keeps its exact casing (e.g. "aFPA") despite the header's
+   uppercase transform. */
+.fpa-app-root .fpa-app-th-metric {
+  text-transform: none;
 }
 
 /* ── Sortable headers ──────────────────────────────────────────────────────── */
 
-.sdt-fpa__th--sortable {
+.fpa-app-root .fpa-app-th--sortable {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.sdt-fpa__th--sortable:hover {
+.fpa-app-root .fpa-app-th--sortable:hover {
   background: linear-gradient(90deg, #132a4a, #1c3c66);
 }
 
-.sdt-fpa__sort-ind {
-  margin-left: 5px;
-  font-size: 9px;
-  opacity: 0.5;
-}
-
-.sdt-fpa .sdt-fpa__th.is-sorted-asc .sdt-fpa__sort-ind,
-.sdt-fpa .sdt-fpa__th.is-sorted-desc .sdt-fpa__sort-ind {
-  opacity: 1;
+/* Active sort column — tint the header label gold instead of showing an arrow.
+   Scoped with .fpa-app-root to outrank the white `th` label color rule above. */
+.fpa-app-root .fpa-app-th.fpa-app-is-sorted-asc .fpa-app-th-label,
+.fpa-app-root .fpa-app-th.fpa-app-is-sorted-desc .fpa-app-th-label {
   color: var(--sdt-gold);
 }
 
-.sdt-fpa__th.is-off,
-.sdt-fpa__td.is-off {
+.fpa-app-root .fpa-app-th.fpa-app-is-off,
+.fpa-app-root .fpa-app-td.fpa-app-is-off {
   background-color: rgba(244, 196, 48, 0.1);
 }
 
-.sdt-fpa__row {
+.fpa-app-root .fpa-app-row {
   border-top: 1px solid #eef1f5;
   transition: background 0.12s ease;
 }
 
-.sdt-fpa__row:hover {
+.fpa-app-root .fpa-app-row:hover {
   background: var(--sdt-row-hover);
 }
 
-.sdt-fpa__td {
-  padding: 10px 12px;
+.fpa-app-root .fpa-app-td {
+  padding: 2px 8px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
 
-.sdt-fpa__td--team {
+.fpa-app-root .fpa-app-td--team {
   text-align: left;
   display: flex;
   align-items: center;
   gap: 10px;
+  /* Extra breathing room so the Team name doesn't crowd the QB column. */
+  padding-right: 24px;
 }
 
-.sdt-fpa__td.is-off {
+.fpa-app-root .fpa-app-td.fpa-app-is-off {
   font-weight: 800;
 }
 
-.sdt-fpa__logo {
+/* Fluid sizing for the metric columns (QB/RB/WR/TE/OFF aFPA) so they shrink up
+   to 25% as the widget narrows — letting the table fit without horizontal
+   scroll and keeping the Team abbreviation from being crowded. cqi = 1% of the
+   widget's own width (it's a container). Scoped with .fpa-app-root so it outranks
+   the mobile `.fpa-app-td` font-size rule.
+   Headers:  11px → 8.25px (75%).   Cells: 14px → 10.5px (75%).
+
+   The `.fpa-app-th.fpa-app-th--num` double-class (0,3,0) is deliberate: it must
+   outrank the mobile `.fpa-app-root .fpa-app-th { font-size: 13px }` rule below,
+   which is otherwise an equal-specificity (0,2,0) tie that the later mobile rule
+   would win — inflating these headers to a flat 13px on phones. */
+.fpa-app-root .fpa-app-th.fpa-app-th--num {
+  font-size: clamp(8.25px, 2.2cqi, 11px);
+}
+
+.fpa-app-root .fpa-app-td--num {
+  font-size: clamp(10.5px, 2.8cqi, 14px);
+}
+
+.fpa-app-root .fpa-app-logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
 }
 
-.sdt-fpa__logo img {
-  width: 26px;
-  height: 26px;
+.fpa-app-root .fpa-app-logo img {
+  width: 22px;
+  height: 22px;
   object-fit: contain;
 }
 
-.sdt-fpa__logo--fallback {
+.fpa-app-root .fpa-app-logo--fallback {
   border-radius: 999px;
   background: #eef1f5;
   font-size: 9px;
@@ -469,94 +678,218 @@
   color: var(--sdt-muted);
 }
 
-.sdt-fpa__team-name {
+.fpa-app-root .fpa-app-team-name {
   display: flex;
   flex-direction: column;
   line-height: 1.15;
 }
 
-.sdt-fpa__abbr {
+.fpa-app-root .fpa-app-abbr {
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
-.sdt-fpa__full {
+.fpa-app-root .fpa-app-full {
   font-size: 11px;
   color: var(--sdt-muted);
 }
 
 /* ── Heatmap tints ─────────────────────────────────────────────────────────── */
 
-.sdt-heat--tough {
+.fpa-app-root .fpa-app-heat--tough {
   background-color: hsla(6, 72%, 52%, 0.07);
 }
-.sdt-heat--good {
+.fpa-app-root .fpa-app-heat--good {
   background-color: hsla(43, 96%, 56%, 0.09);
 }
-.sdt-heat--smash {
+.fpa-app-root .fpa-app-heat--smash {
   background-color: hsla(151, 60%, 45%, 0.1);
 }
 
 /* ── Loading state ─────────────────────────────────────────────────────────── */
 
-.sdt-fpa.is-loading .sdt-fpa__table-wrap {
+.fpa-app-root.fpa-app-is-loading .fpa-app-table-wrap {
   opacity: 0.55;
   pointer-events: none;
 }
 
-/* ── Mobile (≤640px) ───────────────────────────────────────────────────────── */
+/* ── Mobile (widget ≤640px wide) ───────────────────────────────────────────── */
 
-@media (max-width: 640px) {
-  .sdt-fpa__controls {
+@container fpa-app-root (max-width: 640px) {
+  .fpa-app-root .fpa-app-controls {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
 
-  .sdt-fpa__group {
+  .fpa-app-root .fpa-app-group {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
     width: 100%;
   }
 
-  .sdt-fpa__segmented {
+  .fpa-app-root .fpa-app-segmented {
     display: grid;
     width: 100%;
     gap: 2px;
   }
 
-  .sdt-fpa__segmented--three {
+  .fpa-app-root .fpa-app-segmented--three {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .sdt-fpa__segmented--two {
+  .fpa-app-root .fpa-app-segmented--two {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .sdt-fpa__chip {
+  .fpa-app-root .fpa-app-chip {
     min-height: 40px;
     text-align: center;
   }
 
-  /* Hide the CSV button on small screens. */
-  .sdt-fpa__csv-wrap {
+  /* Richer "premium" gold on the active segment (matches the web app) — less
+     flat bright-yellow so two stacked active blocks don't overpower the panel. */
+  .fpa-app-root .fpa-app-chip.fpa-app-is-active {
+    background: linear-gradient(180deg, #f7c63d, #edb91f);
+    box-shadow:
+      0 3px 8px rgba(216, 165, 20, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  /* Row 2: hide the inline status; it reappears directly above the table. */
+  .fpa-app-root .fpa-app-meta .fpa-app-status {
     display: none;
   }
 
-  /* Hide team logos to save horizontal space. */
-  .sdt-fpa__logo {
+  /* "● Baseline Active" on the left, muted "Preseason model" on the right,
+     spread across the full width just above the table. */
+  .fpa-app-root .fpa-app-status--mobile {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  /* Methodology + Scoring settings become two deliberate equal-width buttons. */
+  .fpa-app-root .fpa-app-meta-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    margin-left: 0;
+    /* Positioning context for the popovers below (see next rule). */
+    position: relative;
+  }
+
+  /* Popover fix (mobile): the trigger buttons are half-width grid cells, so a
+     popover anchored to a single narrow button — and right-aligned via
+     .fpa-app-pop--end — extends off the left edge and gets clipped. Anchor it
+     to the full-width actions row instead (button wrap goes position:static so
+     the absolute body resolves against .fpa-app-meta-actions) and let it span
+     the whole width, dropping the desktop right-edge alignment. */
+  .fpa-app-root .fpa-app-scoring {
+    position: static;
+  }
+
+  .fpa-app-root .fpa-app-scoring-body,
+  .fpa-app-root .fpa-app-pop--end .fpa-app-scoring-body {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+  }
+
+  .fpa-app-root .fpa-app-util-btn {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    justify-content: center;
+  }
+
+  /* Hide the CSV button on small screens. */
+  .fpa-app-root .fpa-app-csv-wrap {
     display: none;
   }
 
   /* Hide full team name; keep the abbreviation only. */
-  .sdt-fpa__full {
+  .fpa-app-root .fpa-app-full {
     display: none;
   }
 
-  .sdt-fpa__th,
-  .sdt-fpa__td {
-    padding: 8px 8px;
+  /* Force the columns to divide the frame instead of sizing to content. With
+     auto layout the shrinking fonts only *encourage* a fit; a fixed layout
+     *guarantees* it — the table is exactly its frame's width (100%) and can
+     never push wider than the screen, so there's no sideways scroll. Team
+     column takes 30%, the five metric columns split the remaining 70% evenly
+     (14% each ≈ 50px on a 360px phone — ample for a value like "34.8"). */
+  .fpa-app-root .fpa-app-table {
+    table-layout: fixed;
+  }
+
+  .fpa-app-root .fpa-app-th--team {
+    width: 30%;
+  }
+
+  .fpa-app-root .fpa-app-th--num {
+    width: 14%;
+  }
+
+  .fpa-app-root .fpa-app-td {
+    padding: 2px 5px;
     font-size: 13px;
+  }
+
+  .fpa-app-root .fpa-app-th {
+    padding: 8px 5px;
+    font-size: 13px;
+    /* Allow metric headers to wrap so columns stay narrow (see below). */
+    white-space: normal;
+  }
+
+  /* Stack the metric onto its own line ("QB" over "aFPA") so each column is
+     only as wide as the number/abbreviation — lets the table fit without
+     horizontal scroll. */
+  .fpa-app-root .fpa-app-th-metric {
+    display: block;
+  }
+
+  /* Team header: a touch smaller on mobile so it's closer to the metric
+     column headers, while staying just slightly bigger than them. */
+  .fpa-app-root .fpa-app-th--team {
+    font-size: clamp(9.5px, 2.5cqi, 12px);
+  }
+
+  /* Slightly smaller team logo + abbreviation on mobile. */
+  .fpa-app-root .fpa-app-logo,
+  .fpa-app-root .fpa-app-logo img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .fpa-app-root .fpa-app-abbr {
+    font-size: 12px;
+  }
+}
+
+/* ── Smaller mobile (widget ≤440px) ────────────────────────────────────────── */
+
+@container fpa-app-root (max-width: 440px) {
+  /* Trim the Team column slightly so it takes less room. */
+  .fpa-app-root .fpa-app-td--team {
+    gap: 8px;
+  }
+
+  .fpa-app-root .fpa-app-logo,
+  .fpa-app-root .fpa-app-logo img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .fpa-app-root .fpa-app-abbr {
+    font-size: 11px;
   }
 }

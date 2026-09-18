@@ -5,9 +5,7 @@ import {
 } from "@workspace/api-client-react";
 import {
   Download,
-  ChevronUp,
   ChevronDown,
-  ChevronsUpDown,
   Info,
   ShieldAlert,
   SlidersHorizontal,
@@ -113,14 +111,19 @@ function getTier(rank: number): Tier {
 
 const ESPN_ABBR: Record<string, string> = { WAS: "wsh" };
 
-function TeamLogo({ abbr, size = 28 }: { abbr: string; size?: number }) {
+function TeamLogo({ abbr, className }: { abbr: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   const slug = ESPN_ABBR[abbr] ?? abbr.toLowerCase();
+  // Sizing comes from `className` (defaults to 28px) so callers can shrink it
+  // responsively on smaller screens.
+  const sizeCls = className ?? "h-7 w-7";
   if (failed) {
     return (
       <div
-        className="flex items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground ring-1 ring-white/10"
-        style={{ width: size, height: size }}
+        className={cn(
+          "flex items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground ring-1 ring-white/10",
+          sizeCls,
+        )}
       >
         {abbr.slice(0, 3)}
       </div>
@@ -130,12 +133,9 @@ function TeamLogo({ abbr, size = 28 }: { abbr: string; size?: number }) {
     <img
       src={`https://a.espncdn.com/i/teamlogos/nfl/500/${slug}.png`}
       alt={abbr}
-      width={size}
-      height={size}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="object-contain"
-      style={{ width: size, height: size }}
+      className={cn("object-contain", sizeCls)}
     />
   );
 }
@@ -194,6 +194,82 @@ const FORMAT_LABEL: Record<ScoringFormat, string> = {
   half: "Half PPR",
   ppr: "PPR",
 };
+
+// Consolidated "Methodology" popover: FPA + Adjusted FPA explanations plus the
+// preseason baseline schedule — replaces the old inline explainer rows.
+function MethodologyInfo() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          data-testid="button-methodology"
+        >
+          <Info className="h-3.5 w-3.5" />
+          Methodology
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="border-b border-border px-3 py-2.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Methodology
+          </span>
+        </div>
+        <div className="max-h-96 space-y-3 overflow-y-auto px-3 py-3">
+          <section>
+            <h4 className="text-[11px] font-bold text-foreground">
+              What are Fantasy Points Allowed?
+            </h4>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Fantasy Points Allowed measures how good or bad each NFL defense is
+              at limiting fantasy production to its opponents. The higher the FPA
+              value, the more fantasy points the team gives up; the lower the
+              value, the fewer points it allows.
+            </p>
+          </section>
+          <section>
+            <h4 className="text-[11px] font-bold text-foreground">
+              What is Adjusted FPA (aFPA)?
+            </h4>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Adjusted FPA takes raw FPA and corrects it for strength of
+              schedule. A defense that has faced stronger-than-average offenses
+              has its number nudged down, while one that has faced weaker
+              offenses is nudged up — so every team is measured as if it played a
+              neutral schedule, making matchups easier to compare.
+            </p>
+          </section>
+          <section>
+            <h4 className="text-[11px] font-bold text-foreground">
+              Preseason baseline
+            </h4>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Using 2025 full-season data until 2026 sample sizes become
+              reliable.
+            </p>
+            <ul className="mt-2 grid gap-1.5 text-xs text-muted-foreground">
+              {[
+                ["Preseason", "100% 2025 full season"],
+                ["Weeks 1–4", "Blended baseline and 2026 data"],
+                ["Week 5+", "Mostly current-season data"],
+                ["Week 12+", "Rolling 10-week data"],
+              ].map(([k, v]) => (
+                <li key={k} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                  <span>
+                    <span className="font-semibold text-foreground">{k}:</span>{" "}
+                    {v}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function ScoringSettings({ format }: { format: ScoringFormat }) {
   const rules: { group: string; items: [string, string][] }[] = [
@@ -305,9 +381,6 @@ export default function FpaPage() {
 
   const [sortField, setSortField] = useState<SortField>("offFpa");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [showMethodology, setShowMethodology] = useState(false);
-  const [showFpaInfo, setShowFpaInfo] = useState(false);
-  const [showAfpaInfo, setShowAfpaInfo] = useState(false);
 
   const { data, isLoading, error } = useGetNflFpa(
     { season, format, view },
@@ -381,17 +454,7 @@ export default function FpaPage() {
     URL.revokeObjectURL(url);
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field)
-      return (
-        <ChevronsUpDown className="ml-1 inline-block h-3.5 w-3.5 text-muted-foreground/40" />
-      );
-    return sortDirection === "asc" ? (
-      <ChevronUp className="ml-1 inline-block h-3.5 w-3.5 text-primary" />
-    ) : (
-      <ChevronDown className="ml-1 inline-block h-3.5 w-3.5 text-primary" />
-    );
-  };
+  const isSorted = (field: SortField) => sortField === field;
 
   // All position blocks are always shown.
   const visiblePositions: PositionKey[] = ["qb", "rb", "wr", "te", "off"];
@@ -402,21 +465,13 @@ export default function FpaPage() {
 
   return (
     <div className="sc-fpa-page min-h-[100dvh] bg-background text-foreground">
-      {/* ambient gold glow behind hero */}
       <div className="relative">
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-64 opacity-[0.18]"
-          style={{
-            background:
-              "radial-gradient(60% 100% at 50% 0%, hsl(43 96% 56% / 0.45), transparent 70%)",
-          }}
-        />
 
-        <div className="relative mx-auto max-w-[1400px] space-y-6 px-[4.8px] py-6 md:px-[9.6px] md:py-8">
+        <div className="relative mx-auto max-w-[1400px] space-y-4 px-[5px] py-6 md:py-8">
           {/* ─── Control panel ───────────────────────────────────────── */}
-          <div className="sc-fpa-controls -mx-[4.8px] space-y-3 border-y border-border bg-card/85 px-[4.8px] py-3 shadow-lg shadow-black/20 ring-1 ring-primary/10 backdrop-blur-md md:mx-0 md:rounded-xl md:border md:px-4">
-            {/* Controls row: segmented controls + CSV */}
-            <div className="sc-fpa-controls__top flex flex-wrap items-center gap-x-4 gap-y-2.5">
+          <div className="sc-fpa-controls -mx-[5px] space-y-2 px-[5px] py-2.5 md:mx-0 md:px-4">
+            {/* Row 1 — filters + export */}
+            <div className="sc-fpa-controls__top flex flex-wrap items-center gap-x-4 gap-y-2">
               <ControlGroup label="Scoring">
                 <Chips
                   value={format}
@@ -452,119 +507,34 @@ export default function FpaPage() {
               <div className="sc-fpa-csv-wrap ml-auto hidden md:block">
                 <Button
                   onClick={handleDownloadCsv}
-                  className="sc-fpa-download-btn h-8 shrink-0 gap-1.5 rounded-lg border border-foreground bg-background px-3 text-xs font-semibold text-foreground hover:bg-background hover:text-foreground"
+                  className="sc-fpa-download-btn h-8 shrink-0 gap-1.5 rounded-lg border border-border bg-transparent px-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
                   data-testid="button-download-csv"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  Download CSV
+                  Export CSV
                 </Button>
               </div>
             </div>
 
-            {/* Collapsible metric explainers */}
-            <div className="space-y-1.5 border-t border-border/50 pt-2.5">
-              <div>
-                <button
-                  onClick={() => setShowFpaInfo(!showFpaInfo)}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
-                  data-testid="button-toggle-fpa-info"
-                  aria-expanded={showFpaInfo}
+            {/* Row 2 — model status + utilities */}
+            <div className="sc-fpa-utility flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/50 pt-2">
+              <div className="sc-fpa-status flex items-center gap-x-3 max-[640px]:hidden">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-emerald-700"
+                  data-testid="chip-baseline-status"
                 >
-                  <Info className="h-3 w-3" />
-                  What Are Fantasy Points Allowed?
-                  <ChevronDown
-                    className={cn(
-                      "h-3 w-3 transition-transform",
-                      showFpaInfo && "rotate-180",
-                    )}
-                  />
-                </button>
-                {showFpaInfo && (
-                  <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                    Fantasy Points Allowed is a metric that indicates how good or
-                    bad each NFL defense is at limiting fantasy production to
-                    their opponents. The higher the FPA value, the more fantasy
-                    points the team gives up. On the flip side, the lower the FPA
-                    value, the less fantasy points a team gives up.
-                  </p>
-                )}
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Baseline Active
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Preseason model
+                </span>
               </div>
-              <div>
-                <button
-                  onClick={() => setShowAfpaInfo(!showAfpaInfo)}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
-                  data-testid="button-toggle-afpa-info"
-                  aria-expanded={showAfpaInfo}
-                >
-                  <Info className="h-3 w-3" />
-                  What Are Adjusted Fantasy Points Allowed?
-                  <ChevronDown
-                    className={cn(
-                      "h-3 w-3 transition-transform",
-                      showAfpaInfo && "rotate-180",
-                    )}
-                  />
-                </button>
-                {showAfpaInfo && (
-                  <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                    Adjusted Fantasy Points Allowed (aFPA) takes raw FPA and
-                    corrects it for strength of schedule. A defense that has
-                    faced stronger-than-average offenses has its number nudged
-                    down, while one that has faced weaker-than-average offenses
-                    is nudged up — so every team is measured as if it played a
-                    neutral schedule. This makes matchups easier to compare
-                    across defenses that haven't faced the same opponents.
-                  </p>
-                )}
-              </div>
-              <div className="pt-0.5">
+
+              <div className="sc-fpa-actions ml-auto flex items-center gap-2">
+                <MethodologyInfo />
                 <ScoringSettings format={format} />
               </div>
-            </div>
-
-            {/* Preseason baseline — collapsible */}
-            <div className="border-t border-border/50 pt-2.5">
-              <button
-                onClick={() => setShowMethodology(!showMethodology)}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(220_47%_24%)] hover:text-[hsl(220_47%_34%)]"
-                data-testid="button-toggle-methodology"
-                aria-expanded={showMethodology}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-[hsl(220_47%_24%)]" />
-                Preseason Baseline Active
-                <ChevronDown
-                  className={cn(
-                    "h-3 w-3 transition-transform",
-                    showMethodology && "rotate-180",
-                  )}
-                />
-              </button>
-              {showMethodology && (
-                <div className="mt-2 max-w-3xl space-y-2.5">
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Using 2025 full-season data until 2026 sample sizes become
-                    reliable.
-                  </p>
-                  <ul className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-                    {[
-                      ["Preseason", "100% 2025 full season"],
-                      ["Weeks 1–4", "Blended baseline and 2026 data"],
-                      ["Week 5+", "Mostly current-season data"],
-                      ["Week 12+", "Rolling 10-week data"],
-                    ].map(([k, v]) => (
-                      <li key={k} className="flex items-start gap-2">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-                        <span>
-                          <span className="font-semibold text-foreground">
-                            {k}:
-                          </span>{" "}
-                          {v}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           </div>
 
@@ -577,18 +547,38 @@ export default function FpaPage() {
               </p>
             </div>
           ) : (
-            <>
+            <div>
+              {/* Mobile only: baseline status sits directly above the table,
+                  top-left (on desktop it lives in the controls panel's Row 2). */}
+              <div className="mb-2 hidden w-full items-center justify-between max-[640px]:flex">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.08] px-2.5 py-1 text-[11px] font-semibold text-emerald-700"
+                  data-testid="chip-baseline-status-mobile"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Baseline Active
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Preseason model
+                </span>
+              </div>
+
               {/* ─── Table ─────────────────────────────────────────── */}
-              <div className="sc-fpa-table overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-black/30">
+              <div className="sc-fpa-table [container-type:inline-size]">
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="w-full border-collapse border border-border text-sm">
                     <thead>
                       <tr className="border-b border-border bg-gradient-to-r from-[#0B1F3A] to-[#132A4A] text-[11px] uppercase tracking-wider text-background">
                         <th
-                          className="cursor-pointer select-none bg-[#0B1F3A] px-4 py-3 text-left font-semibold hover:text-primary"
+                          className={cn(
+                            // Slightly smaller on mobile so the Team header sits
+                            // closer to (just above) the metric column headers.
+                            "cursor-pointer select-none bg-[#0B1F3A] px-4 pr-6 py-1.5 text-left font-semibold hover:text-primary max-[640px]:text-[clamp(9.5px,2.5cqi,12px)]",
+                            isSorted("team") && "text-primary",
+                          )}
                           onClick={() => handleSort("team")}
                         >
-                          Team <SortIcon field="team" />
+                          Team
                         </th>
                         {visiblePositions.map((pos) => (
                           <PositionHeader
@@ -596,7 +586,7 @@ export default function FpaPage() {
                             pos={pos}
                             fpaLabel={fpaLabel}
                             showRank={showRank}
-                            sortIcon={SortIcon}
+                            isSorted={isSorted}
                             onSort={handleSort}
                           />
                         ))}
@@ -634,16 +624,19 @@ export default function FpaPage() {
                             className="group transition-colors hover:bg-[hsl(210_40%_98%)]"
                             data-testid={`row-team-${row.teamAbbr}`}
                           >
-                            <td className="bg-card px-4 py-2.5 transition-colors group-hover:bg-[hsl(210_40%_98%)]">
+                            <td className="bg-card px-4 pr-6 py-0.5 transition-colors group-hover:bg-[hsl(210_40%_98%)]">
                               <div className="flex items-center gap-2.5">
-                                <span className="hidden sm:inline-flex">
-                                  <TeamLogo abbr={row.teamAbbr} />
+                                <span className="inline-flex shrink-0">
+                                  <TeamLogo
+                                    abbr={row.teamAbbr}
+                                    className="h-6 w-6 max-[440px]:h-[22px] max-[440px]:w-[22px]"
+                                  />
                                 </span>
                                 <div className="leading-tight">
-                                  <div className="text-[15px] font-extrabold leading-none tracking-tight text-foreground">
+                                  <div className="text-[15px] font-extrabold leading-none tracking-tight text-foreground max-[640px]:text-[13px] max-[440px]:text-[12px]">
                                     {row.teamAbbr}
                                   </div>
-                                  <div className="mt-0.5 hidden text-[11px] font-medium tracking-wide text-muted-foreground/70 lg:block">
+                                  <div className="mt-0.5 hidden text-[11px] font-medium tracking-wide text-muted-foreground/70 sm:block">
                                     {row.team}
                                   </div>
                                 </div>
@@ -665,7 +658,7 @@ export default function FpaPage() {
                   </table>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* ─── Footer methodology ──────────────────────────────────── */}
@@ -782,13 +775,13 @@ function PositionHeader({
   pos,
   fpaLabel,
   showRank,
-  sortIcon: SortIcon,
+  isSorted,
   onSort,
 }: {
   pos: PositionKey;
   fpaLabel: string;
   showRank: boolean;
-  sortIcon: (props: { field: SortField }) => React.ReactElement;
+  isSorted: (field: SortField) => boolean;
   onSort: (f: SortField) => void;
 }) {
   const label = pos.toUpperCase();
@@ -798,25 +791,30 @@ function PositionHeader({
       {showRank && (
         <th
           className={cn(
-            "cursor-pointer select-none px-3 py-3 text-right font-semibold hover:text-primary",
+            "cursor-pointer select-none px-2 py-1.5 text-right font-semibold hover:text-primary",
             isOff && "bg-primary/[0.06]",
+            isSorted(`${pos}Rank` as SortField) && "text-primary",
           )}
           onClick={() => onSort(`${pos}Rank` as SortField)}
         >
-          {label} Rank <SortIcon field={`${pos}Rank` as SortField} />
+          {label} Rank
         </th>
       )}
       <th
         className={cn(
-          "cursor-pointer select-none border-r border-border/40 px-3 py-3 text-right font-semibold hover:text-primary",
+          // Fluid size so the metric columns shrink up to 25% (11px → 8.25px)
+          // as the table's available width tightens, avoiding horizontal scroll.
+          "cursor-pointer select-none border-r border-border/40 px-2 py-1.5 text-right text-[clamp(8.25px,2.2cqi,11px)] font-semibold hover:text-primary",
           isOff && "border-r-0 bg-primary/[0.06] text-background",
+          isSorted(`${pos}Fpa` as SortField) && "text-primary",
         )}
         onClick={() => onSort(`${pos}Fpa` as SortField)}
       >
         <Tooltip>
           <TooltipTrigger asChild>
             <span>
-              {label} {fpaLabel} <SortIcon field={`${pos}Fpa` as SortField} />
+              {label}{" "}
+              <span className="normal-case max-[640px]:block">{fpaLabel}</span>
             </span>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs text-xs">
@@ -846,7 +844,7 @@ function PositionCells({
   return (
     <>
       {showRank && (
-        <td className={cn("px-3 py-2.5 text-right", heat)}>
+        <td className={cn("px-2 py-0.5 text-right", heat)}>
           <div className="flex items-center justify-end gap-2">
             {showBadge && <TierBadge rank={rank} />}
             <RankChip rank={rank} />
@@ -855,7 +853,9 @@ function PositionCells({
       )}
       <td
         className={cn(
-          "border-r border-border/40 px-3 py-2.5 text-right font-mono tabular-nums",
+          // Fluid size so the metric numbers shrink up to 25% (14px → 10.5px)
+          // as the table's available width tightens, avoiding horizontal scroll.
+          "border-r border-border/40 px-2 py-0.5 text-right font-mono text-[clamp(10.5px,2.8cqi,14px)] tabular-nums",
           heat,
           isOff ? "border-r-0 font-bold text-foreground" : "font-medium",
         )}

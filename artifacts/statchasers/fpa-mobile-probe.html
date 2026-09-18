@@ -1,0 +1,360 @@
+<title>FPA Mobile Fit Probe</title>
+<style>
+  :root {
+    --ink: #0f1a2b;
+    --sub: #5a6b82;
+    --line: #dde3ec;
+    --panel: #ffffff;
+    --page: #eef1f6;
+    --gold: #f4c430;
+    --ok: #0f8a5f;
+    --bad: #d1362f;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8edf5;
+      --sub: #93a1b5;
+      --line: #26313f;
+      --panel: #131b26;
+      --page: #0b1119;
+    }
+  }
+  :root[data-theme="light"] {
+    --ink: #0f1a2b; --sub: #5a6b82; --line: #dde3ec; --panel: #fff; --page: #eef1f6;
+  }
+  :root[data-theme="dark"] {
+    --ink: #e8edf5; --sub: #93a1b5; --line: #26313f; --panel: #131b26; --page: #0b1119;
+  }
+
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 16px 12px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  header.probe {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  header.probe h1 {
+    margin: 0;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  header.probe p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--sub);
+    max-width: 60ch;
+  }
+
+  /* ── Instrument readout ─────────────────────────── */
+  .instrument {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    overflow: hidden;
+    font-family: var(--mono);
+  }
+  .verdict {
+    padding: 12px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border-bottom: 1px solid var(--line);
+  }
+  .verdict .dot {
+    width: 10px; height: 10px; border-radius: 999px; flex: 0 0 auto;
+  }
+  .verdict.ok { color: var(--ok); }
+  .verdict.ok .dot { background: var(--ok); }
+  .verdict.bad { color: var(--bad); }
+  .verdict.bad .dot { background: var(--bad); }
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+  }
+  .metric {
+    background: var(--panel);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .metric .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sub);
+  }
+  .metric .v {
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hint {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--sub);
+    font-family: var(--sans);
+  }
+  .hint code {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: color-mix(in srgb, var(--sub) 16%, transparent);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+  .hint b { color: var(--ink); }
+
+  .stage-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sub);
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  /* The widget below is deliberately a DIRECT child of a plain container —
+     no theme, no page builder, nothing wrapping it. This is the whole point:
+     if it fits here on your phone but not on the live page, the difference is
+     everything the live page adds around it. */
+
+  /* ============================================================
+     BELOW: verbatim copy of the shipped plugin stylesheet
+     (assets/css/sdt-fpa.css, v1.2.3). Do not edit — this must
+     stay a faithful mirror of production for the probe to be valid.
+     ============================================================ */
+  .sdt-fpa {
+    --sdt-gold: #f4c430; --sdt-navy: #0b1f3a; --sdt-blue: #20365a;
+    --sdt-border: #e6e9ee; --sdt-muted: #52627a; --sdt-card: #fff; --sdt-row-hover: #f7f9fc;
+    color: var(--sdt-navy);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; line-height: 1.4;
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+    width: 100%; max-width: 1400px; margin-left: auto; margin-right: auto;
+    padding-left: 5px; padding-right: 5px; box-sizing: border-box;
+    container: sdt-fpa / inline-size;
+  }
+  .sdt-fpa__status--mobile { display: none; }
+  .sdt-fpa__status-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+    border-radius: 999px; font-size: 11px; font-weight: 700;
+    background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: #047857;
+  }
+  .sdt-fpa__status-dot { width: 6px; height: 6px; border-radius: 999px; background: #10b981; }
+  .sdt-fpa__meta-label { font-size: 11px; color: var(--sdt-muted); }
+  .sdt-fpa__table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .sdt-fpa__table { width: 100%; border-collapse: collapse; font-size: 14px; border: 1px solid var(--sdt-border); }
+  .sdt-fpa .sdt-fpa__th, .sdt-fpa .sdt-fpa__th-label { color: #fff; }
+  .sdt-fpa__th {
+    background: linear-gradient(90deg, #0b1f3a, #132a4a); color: #fff; font-size: 11px;
+    font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 8px 8px;
+    text-align: right; white-space: nowrap;
+  }
+  .sdt-fpa__th--team { text-align: left; padding-right: 24px; }
+  .sdt-fpa__th-metric { text-transform: none; }
+  .sdt-fpa__th.is-off, .sdt-fpa__td.is-off { background-color: rgba(244,196,48,.1); }
+  .sdt-fpa__row { border-top: 1px solid #eef1f5; }
+  .sdt-fpa__td { padding: 2px 8px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .sdt-fpa__td--team { text-align: left; display: flex; align-items: center; gap: 10px; padding-right: 24px; }
+  .sdt-fpa__td.is-off { font-weight: 800; }
+  .sdt-fpa .sdt-fpa__th.sdt-fpa__th--num { font-size: clamp(8.25px, 2.2cqi, 11px); }
+  .sdt-fpa .sdt-fpa__td--num { font-size: clamp(10.5px, 2.8cqi, 14px); }
+  .sdt-fpa__logo {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; flex: 0 0 auto;
+  }
+  .sdt-fpa__logo--fallback {
+    border-radius: 999px; background: #eef1f5; font-size: 9px; font-weight: 700; color: var(--sdt-muted);
+  }
+  .sdt-fpa__abbr { font-weight: 800; letter-spacing: -0.01em; }
+  .sdt-fpa__full { font-size: 11px; color: var(--sdt-muted); }
+  .sdt-heat--tough { background-color: hsla(6,72%,52%,.07); }
+  .sdt-heat--good  { background-color: hsla(43,96%,56%,.09); }
+  .sdt-heat--smash { background-color: hsla(151,60%,45%,.1); }
+
+  @container sdt-fpa (max-width: 640px) {
+    .sdt-fpa__status--mobile {
+      display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+      gap: 8px; width: 100%; margin-bottom: 8px;
+    }
+    .sdt-fpa__full { display: none; }
+    .sdt-fpa__table { table-layout: fixed; }
+    .sdt-fpa__th--team { width: 30%; }
+    .sdt-fpa__th--num { width: 14%; }
+    .sdt-fpa__td { padding: 2px 5px; font-size: 13px; }
+    .sdt-fpa__th { padding: 8px 5px; font-size: 13px; white-space: normal; }
+    .sdt-fpa__th-metric { display: block; }
+    .sdt-fpa__th--team { font-size: clamp(9.5px, 2.5cqi, 12px); }
+    .sdt-fpa__logo { width: 22px; height: 22px; }
+    .sdt-fpa__abbr { font-size: 12px; }
+  }
+  @container sdt-fpa (max-width: 440px) {
+    .sdt-fpa__td--team { gap: 8px; }
+    .sdt-fpa__logo { width: 20px; height: 20px; }
+    .sdt-fpa__abbr { font-size: 11px; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="probe">
+    <h1>FPA table &mdash; mobile fit probe</h1>
+    <p>This renders the shipped plugin table (v1.2.3 CSS, byte-for-byte) with nothing wrapping it &mdash; no Divi, no theme. Open it on the same phone where the live page overflows, then compare.</p>
+  </header>
+
+  <div class="instrument" id="instrument">
+    <div class="verdict" id="verdict"><span class="dot"></span><span id="verdictText">measuring&hellip;</span></div>
+    <div class="metrics">
+      <div class="metric"><span class="k">Viewport width</span><span class="v" id="mViewport">&mdash;</span></div>
+      <div class="metric"><span class="k">Widget width</span><span class="v" id="mWidget">&mdash;</span></div>
+      <div class="metric"><span class="k">Active breakpoint</span><span class="v" id="mBreak">&mdash;</span></div>
+      <div class="metric"><span class="k">Table vs. frame</span><span class="v" id="mOverflow">&mdash;</span></div>
+    </div>
+  </div>
+
+  <p class="hint" id="interpret"></p>
+
+  <span class="stage-label">Live plugin table (isolated)</span>
+
+  <div class="sdt-fpa" id="widget" data-sdt-fpa>
+    <div class="sdt-fpa__status--mobile">
+      <span class="sdt-fpa__status-chip"><span class="sdt-fpa__status-dot"></span>Baseline Active</span>
+      <span class="sdt-fpa__meta-label">Preseason model</span>
+    </div>
+    <div class="sdt-fpa__table-wrap" id="tableWrap">
+      <table class="sdt-fpa__table">
+        <thead>
+          <tr id="headRow"></tr>
+        </thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 32 teams with representative one-decimal aFPA values — same shape the
+  // plugin JS emits, so column widths match production.
+  var COLS = ["QB", "RB", "WR", "TE", "OFF"];
+  var TEAMS = [
+    ["ARI","Cardinals",22.4,26.1,34.8,11.2,94.5],["ATL","Falcons",19.7,24.3,31.5,10.4,85.9],
+    ["BAL","Ravens",17.2,21.8,28.9,9.1,77.0],["BUF","Bills",16.8,20.4,27.3,8.7,73.2],
+    ["CAR","Panthers",23.1,27.5,35.9,12.0,98.5],["CHI","Bears",18.9,22.7,30.1,9.8,81.5],
+    ["CIN","Bengals",20.5,24.9,32.4,10.7,88.5],["CLE","Browns",15.9,19.6,26.1,8.2,69.8],
+    ["DAL","Cowboys",21.3,25.4,33.2,11.0,90.9],["DEN","Broncos",17.6,21.2,28.4,9.0,76.2],
+    ["DET","Lions",20.1,24.5,31.9,10.5,87.0],["GB","Packers",18.4,22.1,29.6,9.6,79.7],
+    ["HOU","Texans",19.2,23.0,30.5,10.0,82.7],["IND","Colts",21.8,26.0,33.8,11.3,92.9],
+    ["JAX","Jaguars",22.9,27.1,35.4,11.8,97.2],["KC","Chiefs",16.4,20.0,26.8,8.5,71.7],
+    ["LV","Raiders",22.0,26.3,34.1,11.4,93.8],["LAC","Chargers",19.9,24.1,31.3,10.3,85.6],
+    ["LAR","Rams",20.7,25.0,32.7,10.8,89.2],["MIA","Dolphins",18.1,21.7,29.0,9.4,78.2],
+    ["MIN","Vikings",19.5,23.4,30.8,10.1,83.8],["NE","Patriots",17.9,21.5,28.7,9.2,77.3],
+    ["NO","Saints",18.7,22.4,29.9,9.7,80.7],["NYG","Giants",23.4,27.8,36.2,12.2,99.6],
+    ["NYJ","Jets",16.1,19.8,26.4,8.3,70.6],["PHI","Eagles",17.4,21.0,28.1,8.9,75.4],
+    ["PIT","Steelers",15.6,19.2,25.7,8.0,68.5],["SF","49ers",16.9,20.6,27.6,8.8,73.9],
+    ["SEA","Seahawks",21.0,25.2,33.0,10.9,90.1],["TB","Buccaneers",20.3,24.7,32.1,10.6,87.7],
+    ["TEN","Titans",22.6,26.7,34.5,11.6,95.4],["WAS","Commanders",21.5,25.7,33.5,11.1,91.8]
+  ];
+
+  function tierHeat(v) {
+    // Bigger aFPA = softer defense = "smash". Coarse buckets just for tint.
+    if (v >= 33) return "sdt-heat--smash";
+    if (v >= 30) return "sdt-heat--good";
+    if (v >= 27) return "";
+    return "sdt-heat--tough";
+  }
+
+  var headRow = document.getElementById("headRow");
+  var teamTh = document.createElement("th");
+  teamTh.className = "sdt-fpa__th sdt-fpa__th--team";
+  teamTh.innerHTML = '<span class="sdt-fpa__th-label">Team</span>';
+  headRow.appendChild(teamTh);
+  COLS.forEach(function (c) {
+    var th = document.createElement("th");
+    th.className = "sdt-fpa__th sdt-fpa__th--num" + (c === "OFF" ? " is-off" : "");
+    th.innerHTML = '<span class="sdt-fpa__th-label">' + c +
+      '<span class="sdt-fpa__th-metric"> aFPA</span></span>';
+    headRow.appendChild(th);
+  });
+
+  var body = document.getElementById("body");
+  TEAMS.forEach(function (t) {
+    var tr = document.createElement("tr");
+    tr.className = "sdt-fpa__row";
+    var td = document.createElement("td");
+    td.className = "sdt-fpa__td sdt-fpa__td--team";
+    td.innerHTML =
+      '<span class="sdt-fpa__logo sdt-fpa__logo--fallback">' + t[0] + '</span>' +
+      '<span class="sdt-fpa__team-name"><span class="sdt-fpa__abbr">' + t[0] + '</span>' +
+      '<span class="sdt-fpa__full">' + t[1] + '</span></span>';
+    tr.appendChild(td);
+    for (var i = 0; i < 5; i++) {
+      var v = t[i + 2];
+      var cell = document.createElement("td");
+      var isOff = i === 4;
+      cell.className = "sdt-fpa__td sdt-fpa__td--num " + tierHeat(v) + (isOff ? " is-off" : "");
+      cell.textContent = v.toFixed(1);
+      tr.appendChild(cell);
+    }
+    body.appendChild(tr);
+  });
+
+  var widget = document.getElementById("widget");
+  var tableWrap = document.getElementById("tableWrap");
+  var verdict = document.getElementById("verdict");
+  var verdictText = document.getElementById("verdictText");
+  var interpret = document.getElementById("interpret");
+
+  function measure() {
+    var vw = window.innerWidth;
+    var ww = Math.round(widget.getBoundingClientRect().width);
+    var brk = ww <= 440 ? "≤440px (narrowest)" : ww <= 640 ? "≤640px (mobile)" : ">640px (desktop)";
+    // Does the table overflow its scroll frame? scrollWidth beyond clientWidth by
+    // more than a rounding pixel means columns don't fit and it scrolls sideways.
+    var overflowPx = tableWrap.scrollWidth - tableWrap.clientWidth;
+    var overflows = overflowPx > 1;
+
+    document.getElementById("mViewport").textContent = vw + "px";
+    document.getElementById("mWidget").textContent = ww + "px";
+    document.getElementById("mBreak").textContent = brk;
+    document.getElementById("mOverflow").textContent = overflows
+      ? "overflows +" + overflowPx + "px"
+      : "fits";
+
+    if (overflows) {
+      verdict.className = "verdict bad";
+      verdictText.textContent = "Table does NOT fit — scrolls sideways here too";
+      interpret.innerHTML = "The isolated plugin table overflows on <b>this</b> device, so the cause travels with the CSS/browser — <b>not</b> Divi. Most likely this browser isn't applying <code>@container</code> queries, or is holding a stale cached stylesheet. Try a private/incognito tab; tell me the exact browser + phone model.";
+    } else {
+      verdict.className = "verdict ok";
+      verdictText.textContent = "Table fits — all columns visible, no sideways scroll";
+      interpret.innerHTML = "The plugin table fits fine on this device once nothing wraps it. So the live-page overflow is coming from <b>the Divi page around it</b> (a wrapper wider than the screen), or a <b>stale cached CSS</b> served only on the live page. Next step: check the live page's <code>.et_pb_code</code> / row wrapper width, and purge any page/CDN cache.";
+    }
+  }
+
+  measure();
+  window.addEventListener("resize", measure);
+  window.addEventListener("orientationchange", function () { setTimeout(measure, 200); });
+</script>

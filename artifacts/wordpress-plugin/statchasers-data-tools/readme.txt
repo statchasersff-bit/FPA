@@ -3,7 +3,7 @@ Contributors: statchasers
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.11
 License: GPLv2 or later
 
 Frontend display for StatChasers Fantasy Points Allowed data, served from a snapshot bundled inside the plugin.
@@ -46,7 +46,77 @@ writes the result to the plugin's data/fpa-data.json:
 
 No external services, secrets, or scheduled jobs are involved.
 
+== Fixing a stuck "Loading…" message ==
+
+If the table stays on "Loading Fantasy Points Allowed…" until you click, tap, or
+scroll the page — then appears instantly — a performance/caching layer is holding
+the widget's JavaScript until the first user interaction ("Delay JavaScript
+Execution"). The plugin auto-excludes itself from WP Rocket, Perfmatters, and
+Cloudflare Rocket Loader. For any other optimizer, add "sdt-fpa.js" to its JS
+delay/defer exclusion list:
+
+* WP Rocket → Settings → File Optimization → "Delay JavaScript execution" →
+  "Excluded JavaScript Files": add  sdt-fpa.js
+* Perfmatters → Assets → "Delay JavaScript" → exclusions: add  sdt-fpa.js
+* LiteSpeed Cache → Page Optimization → JS Settings: exclude  sdt-fpa.js
+  (and add it to "Guest Mode JS Excludes" if Guest Mode is on)
+* FlyingPress → "JS: Delay" exclusions: add  sdt-fpa.js
+* Autoptimize → "Exclude scripts from Autoptimize": add  sdt-fpa.js
+* Cloudflare → if you don't want to rely on the automatic opt-out, turn off
+  Rocket Loader for the site (Speed → Optimization).
+
+After changing any of these, purge the page/CDN cache and reload.
+
 == Changelog ==
+
+= 1.2.11 =
+* Fix the Methodology / Scoring settings popover being cut off on the left on mobile. The trigger buttons are half-width on phones, and the popover was anchored to a single narrow button and right-aligned, so it overflowed off the left edge. It now spans the full width of the controls row (anchored below both buttons) so the whole panel is visible.
+
+= 1.2.10 =
+* Fix the tool getting stuck on "Loading…" until the visitor clicks/scrolls. This happens when a performance stack (WP Rocket, Perfmatters, LiteSpeed, FlyingPress) or Cloudflare Rocket Loader applies "Delay JavaScript Execution until user interaction" — the widget's script never runs until you interact with the page. The plugin now opts its own script out of the common ones automatically (data-cfasync="false" plus the WP Rocket / Perfmatters delay-exclusion filters). If your optimizer isn't auto-detected, manually exclude "sdt-fpa.js" from its "Delay JavaScript" / "Delay JS Execution" setting — see "Fixing a stuck 'Loading…' message" below.
+
+= 1.2.9 =
+* Load-time fix: the table now appears immediately. The widget's stylesheet is shipped as inline text and applied inside the Shadow DOM synchronously (via a constructable stylesheet, or a <style> fallback), so the tool no longer stays hidden waiting on a network stylesheet fetch — previously it could sit blank up to ~1.5s on a cold or slow cache even though the table was already built. Also dropped the redundant render-blocking light-DOM stylesheet request.
+
+= 1.2.8 =
+* Fix mobile metric headers (QB/RB/WR/TE/OFF aFPA) rendering oversized on phones. The mobile `.fpa-app-th` font-size rule tied on specificity with the intended `.fpa-app-th--num` clamp and, being later in the sheet, won — inflating those headers to a flat 13px and visually shrinking the team logo/abbr relative to them. Scoping the clamp as `.fpa-app-th.fpa-app-th--num` restores the intended fluid sizing.
+
+= 1.2.7 =
+* Big load-time fix: the table now renders instantly from data inlined into the page instead of fetching each scoring/view combo from the REST endpoint. Every one of those REST calls booted the entire WordPress stack, which is why the tool felt slow to appear on each page view. Switching scoring format or Raw/Adjusted is now instant too (no per-combo request). The REST endpoint remains as a fallback and for external consumers.
+
+= 1.2.6 =
+* Rename every widget CSS class to the `fpa-app-` prefix (from `dc-app-`) and scope every rule under a single `.fpa-app-root` wrapper (`.fpa-app-root .fpa-app-…`). Combined with the Shadow DOM, the widget's styles are now double-walled: they can neither be reached by Divi/WordPress CSS nor leak out into the surrounding page.
+
+= 1.2.5 =
+* Render the FPA table inside a Shadow DOM so WordPress/Divi global CSS can no longer reach it — the widget now displays exactly as designed regardless of the surrounding theme, with no more color/spacing/table-style bleed to patch around.
+* Namespace every widget CSS class under the `dc-app-` prefix (from `sdt-fpa`) to guarantee zero class-name collisions with Divi and other plugins.
+
+= 1.2.4 =
+* Fix: the mobile table could still overflow and scroll sideways on some phones. The metric columns now use a fixed layout that divides the available width evenly, so the table is structurally guaranteed to fit its frame regardless of content.
+* Fix: pin text-size-adjust so mobile browsers (Android Chrome font-boosting / iOS text auto-sizing) can no longer inflate the table's text past the frame — a production-only, mobile-only cause of the sideways scroll.
+
+= 1.2.3 =
+* Version the frontend CSS/JS by their file modification time so browsers/CDNs automatically reload them whenever the files change — no more stale assets after an update (earlier 1.2.2 rebuilds reused the same cache-busting version).
+* On mobile, wrap the metric column headers onto two lines ("QB" over "aFPA") so every column is narrower and the table fits without horizontal scrolling.
+* Replace the Unicode symbol icons (info, gear, caret, download arrow) with inline SVGs so they render consistently in all themes (e.g. Divi), and add the info icon next to the "View" control.
+* Cap the tool at a 1400px max width so it fills its column normally but stops expanding when the desktop page is zoomed out / on ultra-wide viewports (matches the web app).
+
+= 1.2.2 =
+* Make the widget's responsive layout track its own rendered width instead of the browser viewport (CSS container queries). The "Download CSV" button and the mobile stacked layout now switch based on how wide the widget actually is in its column, so the button no longer disappears too early on embedded pages.
+* Fix: the table can now be scrolled horizontally on mobile when it's wider than the screen (it was previously clipped and unscrollable).
+* Remove the card container (border/background/shadow) around the table; it now sits flush, with an invisible scroll region preserved so it still scrolls sideways on mobile.
+* Remove the card container (border/background/shadow/padding) around the controls panel (scoring/view/CSV, explainers, preseason baseline); the contents now sit flush.
+* Always show team logos in the table, including on the narrowest mobile widths (they were previously dropped once the widget got very narrow), and keep them at their full desktop size (26px) on mobile instead of shrinking them.
+* Show the adjusted-view column metric as "aFPA" (not "AFPA") in the table headers.
+* Add a 1px border around the table.
+* On the narrowest mobile widths (≤440px), slightly reduce the Team column's logo and abbreviation size so it takes less horizontal room.
+* Fluidly shrink the metric columns (QB/RB/WR/TE/OFF aFPA) by up to 25% as the widget narrows, so the table fits without horizontal scroll and the Team abbreviation isn't crowded.
+* Add breathing room between the Team column and the QB column so the abbreviation no longer touches it.
+* Tighten row/header vertical padding to make the table roughly 20% shorter.
+* On mobile, slightly reduce the "Team" column header text so it's closer to the metric column headers (still just a touch bigger).
+* On mobile, slightly reduce the team logo and abbreviation size, and tighten the gap between the Team and QB columns.
+* Make the data rows ~30% shorter (tighter row padding plus a slightly smaller team logo) while trimming the header row only ~10%.
+* Redesign the control panel into two compact rows: filters + a secondary "Export CSV" action on top, and a model/utilities strip below. "Preseason Baseline Active" is now a green status chip; the FPA/Adjusted-FPA explainers and baseline schedule are consolidated into a single "Methodology" popover next to "Scoring settings".
 
 = 1.2.1 =
 * Make the FPA table columns sortable: click any header to sort by that column, click again to reverse. Active column shows a gold arrow. Fix header text rendering gray on some themes (now forced white regardless of theme styles).

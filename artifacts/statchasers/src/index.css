@@ -216,10 +216,14 @@
     white-space: nowrap;
   }
 
+  /* Richer "premium" gold on the active segment — less flat bright-yellow so
+     two stacked active blocks don't overpower the panel. */
   .sc-fpa-segmented button.is-active {
-    background: #f8bd18;
+    background: linear-gradient(180deg, #f7c63d, #edb91f);
     color: #111827;
-    box-shadow: 0 2px 6px rgba(248, 189, 24, 0.28);
+    box-shadow:
+      0 3px 8px rgba(216, 165, 20, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
 
   /* CSV button drops below the filters and spans the full width. */
@@ -236,5 +240,28 @@
     justify-content: center;
     font-size: 13px;
     font-weight: 900;
+  }
+
+  /* ─── Row 2: status stacks above an equal-width 2-up button grid ─────────── */
+  .sc-fpa-utility {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  /* Methodology + Scoring settings as two deliberate equal-width buttons. */
+  .sc-fpa-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .sc-fpa-actions button {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    justify-content: center;
   }
 }
